@@ -40,12 +40,17 @@ module Session =
   let makeEntry (e: string array) =
     (Timestamp (e.[0], e.[1]), (makeAction e.[2..]))
 
+  let rec unoption =
+    function
+      | (ts, None) :: tail -> unoption tail
+      | (ts, Some a) :: tail -> (ts, a) :: (unoption tail)
+      | [] -> []
+
   let makeEntries (lines: string array) =
     lines
     |> Seq.map (fun l -> l.Split (';') |> makeEntry)
-    |> Seq.filter (fun e -> match e with
-                              | (_, Some _) -> true
-                              | _ -> false)
+    |> Seq.toList
+    |> unoption
 
   let readLines filePath = System.IO.File.ReadAllLines(filePath)
 
