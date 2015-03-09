@@ -98,13 +98,13 @@ module Session =
         | (_, Action.Previous _) :: t -> 1 + prev t
         | _ :: t -> prev t
 
-    let private asProgress major minor =
-      if minor = 0 then float major else float major - 1.0 + (float minor) / 10.0
+    let private toFloat s ss =
+      if ss = 0 then float s else float s - 1.0 + (float ss) / 10.0
 
     let rec progress =
       function
-        | (ts:Time.Timestamp, Action.Next (s, ss)) :: t -> (float ts.elapsed, asProgress s ss) :: progress t
-        | (ts, Action.Previous (s, ss)) :: t -> (float ts.elapsed, asProgress s ss ) :: progress t
+        | (ts:Time.Timestamp, Action.Next (s, ss)) :: t -> (float ts.elapsed, toFloat s ss) :: progress t
+        | (ts, Action.Previous (s, ss)) :: t -> (float ts.elapsed, toFloat s ss ) :: progress t
         | [] -> []
         | _ :: t -> progress t
 
