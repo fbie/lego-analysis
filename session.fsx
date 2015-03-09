@@ -82,7 +82,7 @@ module Session =
     let rec duration =
       function
         | [] -> 0.0<Time.s>
-        | (ts:Time.Timestamp, _) :: [] -> ts.elapsed
+        | (ts: Time.Timestamp, _) :: [] -> ts.elapsed
         | (_, Action.Duration d) :: t -> d
         | _ :: t -> duration t
 
@@ -103,7 +103,7 @@ module Session =
 
     let rec progress =
       function
-        | (ts:Time.Timestamp, Action.Next (s, ss)) :: t -> (float ts.elapsed, toFloat s ss) :: progress t
+        | (ts: Time.Timestamp, Action.Next (s, ss)) :: t -> (float ts.elapsed, toFloat s ss) :: progress t
         | (ts, Action.Previous (s, ss)) :: t -> (float ts.elapsed, toFloat s ss ) :: progress t
         | [] -> []
         | _ :: t -> progress t
@@ -111,16 +111,42 @@ module Session =
     let private zoomY = 3.0
     let rec zoom =
       function
-        | (ts:Time.Timestamp, Action.Zoom _) :: t -> (float ts.elapsed, zoomY) :: zoom t
+        | (ts: Time.Timestamp, Action.Zoom _) :: t -> (ts.elapsed, zoomY) :: zoom t
         | _ :: t -> zoom t
         | [] -> []
 
     let private rotateY = 4.0
     let rec rotate =
       function
-        | (ts:Time.Timestamp, Action.Rotation _) :: t -> (float ts.elapsed, rotateY) :: rotate t
+        | (ts: Time.Timestamp, Action.Rotation _) :: t -> (ts.elapsed, rotateY) :: rotate t
         | _ :: t -> rotate t
         | [] -> []
+
+    let hist interval elems =
+      let rec sum interval last elems =
+        match elems with
+          | [] -> 0.0
+          | (elapsed, _) :: t -> if elapsed - last > interval then 0.0 else 1.0 + (sum interval last t)
+      let rec f interval last elems =
+        match elems with
+          | [] -> []
+          | (elapsed, _) :: t -> if elapsed - last > interval
+                                 then (float elapsed, sum interval elapsed t) :: (f interval elapsed t)
+                                 else f interval last t
+      f interval 0.0<Time.s> elems
+
+    let hist5s =
+      hist 5.0<Time.s>
+
+    let rec repeat f i =
+      if i = 1 then f else f >> repeat f (i - 1)
+
+    let offset i =
+      let rec f =
+        function
+        | [] -> []
+        | (x, y) :: t -> (x + 2.5, y) :: f t
+      repeat f i
 
 let rec getArgs =
   function
@@ -135,9 +161,14 @@ let entries = argv.Head
               |> Session.Analyze.normalize
 
 let gp = new GnuPlot()
-gp.Set(output = Output(Png "/tmp/plot.png", font="arial"))
-[ Series.Points (title="zoom", data=(entries |> Session.Analyze.zoom))
-  Series.Points (title="rotate", data=(entries |> Session.Analyze.rotate))
+gp.Set(output = Output(Png "/tmp/plot", font="arial"))
+[ Series.Impulses (title="zoom", data=(entries
+                                       |> Session.Analyze.zoom
+                                       |> Session.Analyze.hist5s))
+  Series.Impulses (title="rotate", data=(entries
+                                         |> Session.Analyze.rotate
+                                         |> Session.Analyze.hist5s
+                                         |> Session.Analyze.offset 1))
   Series.Lines (title="progress", weight=2, data=(entries |> Session.Analyze.progress))
   ]
 |> gp.Plot
