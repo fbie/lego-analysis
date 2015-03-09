@@ -1,5 +1,9 @@
-module Session =
+#r "packages/FnuPlot.0.1.1-beta/lib/net40/FnuPlot.dll"
+open FnuPlot
+open System
+open System.Drawing
 
+module Session =
   module Time =
     [<Measure>] type ms
     [<Measure>] type s
@@ -63,6 +67,39 @@ module Session =
       |> readLines
       |> makeEntries
 
+  module Analyze =
+    let print prefix x =
+      printfn "%s=%A" prefix x
+
+    let rec duration =
+      function
+        | [] -> 0.0<Time.s>
+        | (ts:Time.Timestamp, _) :: [] -> ts.elapsed
+        | (_, Action.Duration d) :: t -> d
+        | _ :: t -> duration t
+
+    let rec next =
+      function
+        | [] -> 0
+        | (_, Action.Next _) :: t -> 1 + next t
+        | _ :: t -> next t
+
+    let rec prev =
+      function
+        | [] -> 0
+        | (_, Action.Previous _) :: t -> 1 + prev t
+        | _ :: t -> prev t
+
+    let private asProgress major minor =
+      float major + (float minor) / 10.0
+
+    let rec progress =
+      function
+        | (ts:Time.Timestamp, Action.Next (s, ss)) :: t -> (ts.elapsed, asProgress s ss) :: progress t
+        | (ts, Action.Previous (s, ss)) :: t -> (ts.elapsed, asProgress s ss ) :: progress t
+        | [] -> []
+        | _ :: t -> progress t
+
 let rec getArgs =
   function
     | "--" :: t -> t
@@ -70,9 +107,11 @@ let rec getArgs =
     | _ :: t -> getArgs t
 
 let argv = fsi.CommandLineArgs |> Array.toList |> getArgs
-argv
-|> List.map Session.Parse.parseFile
-|> List.iter (Seq.iter (fun e ->
-                        match e with
-                        | (_, Session.Action.Duration d) -> printf "%As\n" d
-                        | _ -> ()))
+let entries = argv.Head
+              |> Session.Parse.parseFile
+              |> Seq.toList
+
+let gp = new GnuPlot()
+gp.Set(output = Output(Png "/tmp/plot.png", font="arial"))
+Series.Lines (title="progress", data=[for k, v in (entries |> Session.Analyze.progress) -> (float k, float v) ])
+|> gp.Plot
