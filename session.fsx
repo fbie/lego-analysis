@@ -40,22 +40,23 @@ module Session =
         | _ -> None
 
   module Parse =
-    let private makeEntry (e: string array) =
+    let private maybeEntry (e: string array) =
       (Time.Timestamp (e.[0], e.[1]), (Action.makeAction e.[2..]))
 
     let rec private unoption =
       function
-        | (ts, None) :: tail -> unoption tail
-        | (ts, Some a) :: tail -> (ts, a) :: (unoption tail)
+        | (ts, None) :: t -> unoption t
+        | (ts, Some a) :: t -> (ts, a) :: (unoption t)
         | [] -> []
 
     let makeEntries (lines: string array) =
       lines
-      |> Seq.map (fun l -> l.Split (';') |> makeEntry)
+      |> Seq.map (fun l -> l.Split (';') |> maybeEntry)
       |> Seq.toList
       |> unoption
 
-    let readLines filePath = System.IO.File.ReadAllLines(filePath)
+    let readLines filePath =
+      System.IO.File.ReadAllLines(filePath)
 
     let parseFile filePath =
       filePath
