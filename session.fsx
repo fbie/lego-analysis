@@ -108,17 +108,15 @@ module Session =
         | [] -> []
         | _ :: t -> progress t
 
-    let private zoomY = 3.0
     let rec zoom =
       function
-        | (ts: Time.Timestamp, Action.Zoom _) :: t -> (ts.elapsed, zoomY) :: zoom t
+        | (ts: Time.Timestamp, Action.Zoom _) :: t -> ts.elapsed :: zoom t
         | _ :: t -> zoom t
         | [] -> []
 
-    let private rotateY = 4.0
     let rec rotate =
       function
-        | (ts: Time.Timestamp, Action.Rotation _) :: t -> (ts.elapsed, rotateY) :: rotate t
+        | (ts: Time.Timestamp, Action.Rotation _) :: t -> ts.elapsed :: rotate t
         | _ :: t -> rotate t
         | [] -> []
 
@@ -126,11 +124,11 @@ module Session =
       let rec sum interval last elems =
         match elems with
           | [] -> 0.0
-          | (elapsed, _) :: t -> if elapsed - last > interval then 0.0 else 1.0 + (sum interval last t)
+          | elapsed :: t -> if elapsed - last > interval then 0.0 else 1.0 + (sum interval last t)
       let rec f interval last elems =
         match elems with
           | [] -> []
-          | (elapsed, _) :: t -> if elapsed - last > interval
+          | elapsed :: t -> if elapsed - last > interval
                                  then (float elapsed, sum interval elapsed t) :: (f interval elapsed t)
                                  else f interval last t
       f interval 0.0<Time.s> elems
