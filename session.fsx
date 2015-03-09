@@ -34,8 +34,8 @@ module Session =
         | [|"Rotation changed"; angle|] -> Some (Rotation (float angle))
         | [|"Session ID"; id|] -> Some (Session id)
         | [|"Dwell time exceeded"; direction|] -> Some (Dwell direction)
-        | [|"Next"; step; substep|] -> Some (Next (int step, int substep))
-        | [|"Previous"; step; substep|] -> Some (Previous (int step, int substep))
+        | [|"Next step"; step; substep|] -> Some (Next (int step, int substep))
+        | [|"Previous step"; step; substep|] -> Some (Previous (int step, int substep))
         | [|"Time to completion"; ms|] -> Some (Duration ((float ms) |> Time.millis |> Time.millisToSecs))
         | _ -> None
 
