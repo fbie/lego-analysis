@@ -30,6 +30,7 @@ module Session =
       | Next of     int * int
       | Previous of int * int
       | Duration of float<Time.s>
+      | Done
 
     let makeAction =
       function
@@ -41,6 +42,7 @@ module Session =
         | [|"Next step"; step; substep|] -> Some (Next (int step, int substep))
         | [|"Previous step"; step; substep|] -> Some (Previous (int step, int substep))
         | [|"Time to completion"; ms|] -> Some (Duration ((float ms) |> Time.millis |> Time.millisToSecs))
+        | [|"Done"|] -> Some Done
         | _ -> None
 
   module Parse =
@@ -70,6 +72,12 @@ module Session =
   module Analyze =
     let print prefix x =
       printfn "%s=%A" prefix x
+
+    let rec normalize =
+      function
+        | [] -> []
+        | (_, Action.Done) :: t -> []
+        | h :: t -> h :: normalize t
 
     let rec duration =
       function
@@ -110,6 +118,7 @@ let argv = fsi.CommandLineArgs |> Array.toList |> getArgs
 let entries = argv.Head
               |> Session.Parse.parseFile
               |> Seq.toList
+              |> Session.Analyze.normalize
 
 let gp = new GnuPlot()
 gp.Set(output = Output(Png "/tmp/plot.png", font="arial"))
