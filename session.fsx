@@ -103,10 +103,24 @@ module Session =
 
     let rec progress =
       function
-        | (ts:Time.Timestamp, Action.Next (s, ss)) :: t -> (ts.elapsed, asProgress s ss) :: progress t
-        | (ts, Action.Previous (s, ss)) :: t -> (ts.elapsed, asProgress s ss ) :: progress t
+        | (ts:Time.Timestamp, Action.Next (s, ss)) :: t -> (float ts.elapsed, asProgress s ss) :: progress t
+        | (ts, Action.Previous (s, ss)) :: t -> (float ts.elapsed, asProgress s ss ) :: progress t
         | [] -> []
         | _ :: t -> progress t
+
+    let private zoomY = 3.0
+    let rec zoom =
+      function
+        | (ts:Time.Timestamp, Action.Zoom _) :: t -> (float ts.elapsed, zoomY) :: zoom t
+        | _ :: t -> zoom t
+        | [] -> []
+
+    let private rotateY = 4.0
+    let rec rotate =
+      function
+        | (ts:Time.Timestamp, Action.Rotation _) :: t -> (float ts.elapsed, rotateY) :: rotate t
+        | _ :: t -> rotate t
+        | [] -> []
 
 let rec getArgs =
   function
@@ -122,5 +136,8 @@ let entries = argv.Head
 
 let gp = new GnuPlot()
 gp.Set(output = Output(Png "/tmp/plot.png", font="arial"))
-Series.Lines (title="progress", data=[for k, v in (entries |> Session.Analyze.progress) -> (float k, float v) ])
+[ Series.Points (title="zoom", data=(entries |> Session.Analyze.zoom))
+  Series.Points (title="rotate", data=(entries |> Session.Analyze.rotate))
+  Series.Lines (title="progress", weight=2, data=(entries |> Session.Analyze.progress))
+  ]
 |> gp.Plot
