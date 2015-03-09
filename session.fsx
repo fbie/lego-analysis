@@ -18,7 +18,7 @@ module Session =
     type Timestamp (time: string, start: string) =
       let time = secs (float time)
       let start = secs (float start)
-      member this.elapsed = time - start
+      member this.elapsed = if start = 0.0<s> then start else time - start
 
   module Action =
     type Action =
