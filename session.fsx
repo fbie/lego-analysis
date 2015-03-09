@@ -99,7 +99,7 @@ module Session =
         | _ :: t -> prev t
 
     let private asProgress major minor =
-      float major + (float minor) / 10.0
+      if minor = 0 then float major else float major - 1.0 + (float minor) / 10.0
 
     let rec progress =
       function
