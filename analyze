@@ -1,1 +1,1 @@
-fsharpi session.fsx -- $@ && open /tmp/plot.png
+fsharpi session.fsx -- $@ && open /tmp/plot
