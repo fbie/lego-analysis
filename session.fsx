@@ -47,7 +47,7 @@ module Session =
 
   module Parse =
     let private maybeEntry (e: string array) =
-      (Time.Timestamp (e.[0], e.[1]), (Action.makeAction e.[2..]))
+      if e.Length > 1 then (Time.Timestamp (e.[0], e.[1]), (Action.makeAction e.[2..])) else (Time.Timestamp ("0", "0"), None)
 
     let rec private unoption =
       function
@@ -139,12 +139,10 @@ module Session =
     let rec repeat f i =
       if i = 1 then f else f >> repeat f (i - 1)
 
-    let offset i =
-      let rec f =
-        function
+    let rec offset i vals =
+      match vals with
         | [] -> []
-        | (x, y) :: t -> (x + 2.5, y) :: f t
-      repeat f i
+        | (x, y) :: t -> (x + i, y) :: offset i t
 
 let rec getArgs =
   function
@@ -159,14 +157,15 @@ let entries = argv.Head
               |> Session.Analyze.normalize
 
 let gp = new GnuPlot()
-gp.Set(output = Output(Png "/tmp/plot", font="arial"))
-[ Series.Impulses (title="zoom", data=(entries
-                                       |> Session.Analyze.zoom
-                                       |> Session.Analyze.hist5s))
-  Series.Impulses (title="rotate", data=(entries
-                                         |> Session.Analyze.rotate
-                                         |> Session.Analyze.hist5s
-                                         |> Session.Analyze.offset 1))
+gp.Set(style = Style(fill = Pattern 100))
+gp.Set(output = Output(Png "plot"))
+[ Series.Impulses (title="zoom", weight=2, data=(entries
+                                                 |> Session.Analyze.zoom
+                                                 |> Session.Analyze.hist5s))
+  Series.Impulses (title="rotate", weight=2, data=(entries
+                                                   |> Session.Analyze.rotate
+                                                   |> Session.Analyze.hist5s
+                                                   |> Session.Analyze.offset 2.5))
   Series.Lines (title="progress", weight=2, data=(entries |> Session.Analyze.progress))
   ]
 |> gp.Plot
