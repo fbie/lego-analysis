@@ -76,6 +76,19 @@ module Session =
         | [] -> []
         | (x, y) :: t -> (x + i, y) :: offset i t
 
+    let attention actions =
+      let rec intervals last actions =
+        match actions with
+          | (ts: Time.Stamp, Action.Tracking b) :: t -> match b with
+                                                          | true -> intervals ts.elapsed t
+                                                          | false -> seq {for p in int last .. int ts.elapsed -> float p, 10.0} :: intervals 0.0<Time.s> t
+          | (ts, a) :: [] -> if last <> 0.0<Time.s> then seq {for p in int last .. int ts.elapsed -> float p, 10.0} :: [] else []
+          | _ :: t -> intervals last t
+          | [] -> []
+      actions
+      |> intervals 0.0<Time.s>
+      |> List.fold (fun s t -> s @ (t |> Seq.toList)) []
+
 let rec getArgs =
   function
     | "--" :: t -> t
@@ -88,7 +101,8 @@ let entries = argv.Head |> Action.parseFile
 let gp = new GnuPlot()
 gp.Set(style = Style(fill = Pattern 100))
 gp.Set(output = Output(Png "plot"))
-[ Series.Impulses (title="zoom", weight=3, data=(entries
+[ Series.Points (title="attention", data=(entries |> Session.attention))
+  Series.Impulses (title="zoom", weight=3, data=(entries
                                                  |> Session.zoom
                                                  |> Session.hist5s))
   Series.Impulses (title="rotate", weight=3, data=(entries
