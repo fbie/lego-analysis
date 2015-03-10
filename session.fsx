@@ -159,10 +159,10 @@ let entries = argv.Head
 let gp = new GnuPlot()
 gp.Set(style = Style(fill = Pattern 100))
 gp.Set(output = Output(Png "plot"))
-[ Series.Impulses (title="zoom", weight=2, data=(entries
+[ Series.Impulses (title="zoom", weight=3, data=(entries
                                                  |> Session.Analyze.zoom
                                                  |> Session.Analyze.hist5s))
-  Series.Impulses (title="rotate", weight=2, data=(entries
+  Series.Impulses (title="rotate", weight=3, data=(entries
                                                    |> Session.Analyze.rotate
                                                    |> Session.Analyze.hist5s
                                                    |> Session.Analyze.offset 2.5))
