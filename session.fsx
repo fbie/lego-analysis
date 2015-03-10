@@ -35,54 +35,36 @@ module Session =
 
     let rec progress =
       function
-        | (ts: Time.Stamp, Action.Next (s, ss)) :: t -> (float ts.elapsed, toFloat s ss) :: progress t
-        | (ts, Action.Previous (s, ss)) :: t -> (float ts.elapsed, toFloat s ss ) :: progress t
+        | (ts: Time.Stamp, Action.Next (s, ss)) :: t | (ts, Action.Previous (s, ss)) :: t -> (float ts.elapsed, toFloat s ss) :: progress t
         | [] -> []
         | _ :: t -> progress t
 
+    let normalize l =
+      let _, m = l |> List.maxBy (fun (_, y) -> y)
+      l |> List.map (fun (x, y) -> x, y / m)
+
     let rec zoom =
       function
-        | (ts: Time.Stamp, Action.Zoom _) :: t -> ts.elapsed :: zoom t
+        | (ts: Time.Stamp, Action.Zoom _) :: t -> float ts.elapsed :: zoom t
         | _ :: t -> zoom t
         | [] -> []
 
     let rec rotate =
       function
-        | (ts: Time.Stamp, Action.Rotation _) :: t -> ts.elapsed :: rotate t
+        | (ts: Time.Stamp, Action.Rotation _) :: t -> float ts.elapsed :: rotate t
         | _ :: t -> rotate t
         | [] -> []
 
-    let hist interval elems =
-      let rec sum interval last elems =
-        match elems with
-          | [] -> 0.0
-          | elapsed :: t -> if elapsed - last > interval then 0.0 else 1.0 + (sum interval last t)
-      let rec f interval last elems =
-        match elems with
-          | [] -> []
-          | elapsed :: t -> if elapsed - last > interval
-                                 then (float elapsed, sum interval elapsed t) :: (f interval elapsed t)
-                                 else f interval last t
-      f interval 0.0<Time.s> elems
-
-    let hist5s =
-      hist 5.0<Time.s>
-
-    let rec repeat f i =
-      if i = 1 then f else f >> repeat f (i - 1)
-
-    let rec offset i vals =
-      match vals with
-        | [] -> []
-        | (x, y) :: t -> (x + i, y) :: offset i t
+    let toPoints h elems =
+      elems |> List.map (fun e -> (e, h))
 
     let attention actions =
       let rec intervals last actions =
         match actions with
           | (ts: Time.Stamp, Action.Tracking b) :: t -> match b with
                                                           | true -> intervals ts.elapsed t
-                                                          | false -> seq {for p in int last .. int ts.elapsed -> float p, 10.0} :: intervals 0.0<Time.s> t
-          | (ts, a) :: [] -> if last <> 0.0<Time.s> then seq {for p in int last .. int ts.elapsed -> float p, 10.0} :: [] else []
+                                                          | false -> seq {for p in int last .. int ts.elapsed -> float p} :: intervals 0.0<Time.s> t
+          | (ts, a) :: [] -> if last <> 0.0<Time.s> then seq {for p in int last .. int ts.elapsed -> float p} :: [] else []
           | _ :: t -> intervals last t
           | [] -> []
       actions
@@ -99,16 +81,14 @@ let argv = fsi.CommandLineArgs |> Array.toList |> getArgs
 let entries = argv.Head |> Action.parseFile
 
 let gp = new GnuPlot()
-gp.Set(style = Style(fill = Pattern 100))
-gp.Set(output = Output(Png "plot"))
-[ Series.Points (title="attention", data=(entries |> Session.attention))
-  Series.Impulses (title="zoom", weight=3, data=(entries
-                                                 |> Session.zoom
-                                                 |> Session.hist5s))
-  Series.Impulses (title="rotate", weight=3, data=(entries
-                                                   |> Session.rotate
-                                                   |> Session.hist5s
-                                                   |> Session.offset 2.5))
-  Series.Lines (title="progress", weight=2, data=(entries |> Session.progress))
+gp.Set(style = Style(fill = Pattern 1))
+gp.SendCommand "set xlabel 'Time (s)'"
+gp.SendCommand "set ylabel 'Progress (normalized)'"
+gp.SendCommand "set term svg"
+gp.SendCommand "set output 'plot'"
+[ Series.Points (title="attention", data=(entries |> Session.attention |> (Session.toPoints 0.3)))
+  Series.Points (title="zoom", data=(entries |> Session.zoom |> (Session.toPoints 0.2)))
+  Series.Points (title="rotate", data=(entries |> Session.rotate |> (Session.toPoints 0.1)))
+  Series.Lines (title="progress", weight=2, data=(entries |> Session.progress |> Session.normalize))
   ]
 |> gp.Plot
