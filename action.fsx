@@ -3,7 +3,7 @@ open Time
 
 module Action =
   type Action =
-    | Tracking of string * int
+    | Tracking of bool
     | Zoom of     float
     | Rotation of float
     | Session of  string
@@ -15,7 +15,7 @@ module Action =
 
   let makeAction =
     function
-      | [|"Tracking state changed"; active; value|] -> Some (Tracking (active, int value))
+      | [|"Tracking state changed"; _ ; value|] -> Some (Tracking (int value = 111))
       | [|"Zoom changed"; delta|] -> Some (Zoom (float delta))
       | [|"Rotation changed"; angle|] -> Some (Rotation (float angle))
       | [|"Session ID"; id|] -> Some (Session id)
