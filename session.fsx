@@ -1,88 +1,20 @@
+#load "action.fsx"
+open Action
+open Time
+
 #r "packages/FnuPlot.0.1.1-beta/lib/net40/FnuPlot.dll"
 open FnuPlot
 open System
 open System.Drawing
 
 module Session =
-  module Time =
-    [<Measure>] type ms
-    [<Measure>] type s
-    [<Measure>] type min
-    let millis t = t * 1.0<ms>
-    let secs t = t * 1.0<s>
-    let mins t = t * 1.0<min>
-    let millisToSecs (t: float<ms>) = t / 1000.0<ms/s>
-    let secsToMins (t: float<s>) = t / 60.0<s/min>
-    let millisToMins (t: float<ms>) = t |> millisToSecs |> secsToMins
-
-    type Timestamp (time: string, start: string) =
-      let time = secs (float time)
-      let start = secs (float start)
-      member this.elapsed = if start = 0.0<s> then start else time - start
-
-  module Action =
-    type Action =
-      | Tracking of string * int
-      | Zoom of     float
-      | Rotation of float
-      | Session of  string
-      | Dwell of    string
-      | Next of     int * int
-      | Previous of int * int
-      | Duration of float<Time.s>
-      | Done
-
-    let makeAction =
-      function
-        | [|"Tracking state changed"; active; value|] -> Some (Tracking (active, int value))
-        | [|"Zoom changed"; delta|] -> Some (Zoom (float delta))
-        | [|"Rotation changed"; angle|] -> Some (Rotation (float angle))
-        | [|"Session ID"; id|] -> Some (Session id)
-        | [|"Dwell time exceeded"; direction|] -> Some (Dwell direction)
-        | [|"Next step"; step; substep|] -> Some (Next (int step, int substep))
-        | [|"Previous step"; step; substep|] -> Some (Previous (int step, int substep))
-        | [|"Time to completion"; ms|] -> Some (Duration ((float ms) |> Time.millis |> Time.millisToSecs))
-        | [|"Done"|] -> Some Done
-        | _ -> None
-
-  module Parse =
-    let private maybeEntry (e: string array) =
-      if e.Length > 1 then (Time.Timestamp (e.[0], e.[1]), (Action.makeAction e.[2..])) else (Time.Timestamp ("0", "0"), None)
-
-    let rec private unoption =
-      function
-        | (ts, None) :: t -> unoption t
-        | (ts, Some a) :: t -> (ts, a) :: (unoption t)
-        | [] -> []
-
-    let makeEntries (lines: string array) =
-      lines
-      |> Seq.map (fun l -> l.Split (';') |> maybeEntry)
-      |> Seq.toList
-      |> unoption
-
-    let readLines filePath =
-      System.IO.File.ReadAllLines(filePath)
-
-    let parseFile filePath =
-      filePath
-      |> readLines
-      |> makeEntries
-
-  module Analyze =
     let print prefix x =
       printfn "%s=%A" prefix x
-
-    let rec normalize =
-      function
-        | [] -> []
-        | (_, Action.Done) :: t -> []
-        | h :: t -> h :: normalize t
 
     let rec duration =
       function
         | [] -> 0.0<Time.s>
-        | (ts: Time.Timestamp, _) :: [] -> ts.elapsed
+        | (ts: Time.Stamp, _) :: [] -> ts.elapsed
         | (_, Action.Duration d) :: t -> d
         | _ :: t -> duration t
 
@@ -103,20 +35,20 @@ module Session =
 
     let rec progress =
       function
-        | (ts: Time.Timestamp, Action.Next (s, ss)) :: t -> (float ts.elapsed, toFloat s ss) :: progress t
+        | (ts: Time.Stamp, Action.Next (s, ss)) :: t -> (float ts.elapsed, toFloat s ss) :: progress t
         | (ts, Action.Previous (s, ss)) :: t -> (float ts.elapsed, toFloat s ss ) :: progress t
         | [] -> []
         | _ :: t -> progress t
 
     let rec zoom =
       function
-        | (ts: Time.Timestamp, Action.Zoom _) :: t -> ts.elapsed :: zoom t
+        | (ts: Time.Stamp, Action.Zoom _) :: t -> ts.elapsed :: zoom t
         | _ :: t -> zoom t
         | [] -> []
 
     let rec rotate =
       function
-        | (ts: Time.Timestamp, Action.Rotation _) :: t -> ts.elapsed :: rotate t
+        | (ts: Time.Stamp, Action.Rotation _) :: t -> ts.elapsed :: rotate t
         | _ :: t -> rotate t
         | [] -> []
 
@@ -151,21 +83,18 @@ let rec getArgs =
     | _ :: t -> getArgs t
 
 let argv = fsi.CommandLineArgs |> Array.toList |> getArgs
-let entries = argv.Head
-              |> Session.Parse.parseFile
-              |> Seq.toList
-              |> Session.Analyze.normalize
+let entries = argv.Head |> Action.parseFile
 
 let gp = new GnuPlot()
 gp.Set(style = Style(fill = Pattern 100))
 gp.Set(output = Output(Png "plot"))
 [ Series.Impulses (title="zoom", weight=3, data=(entries
-                                                 |> Session.Analyze.zoom
-                                                 |> Session.Analyze.hist5s))
+                                                 |> Session.zoom
+                                                 |> Session.hist5s))
   Series.Impulses (title="rotate", weight=3, data=(entries
-                                                   |> Session.Analyze.rotate
-                                                   |> Session.Analyze.hist5s
-                                                   |> Session.Analyze.offset 2.5))
-  Series.Lines (title="progress", weight=2, data=(entries |> Session.Analyze.progress))
+                                                   |> Session.rotate
+                                                   |> Session.hist5s
+                                                   |> Session.offset 2.5))
+  Series.Lines (title="progress", weight=2, data=(entries |> Session.progress))
   ]
 |> gp.Plot
