@@ -39,6 +39,14 @@ module Session =
         | [] -> []
         | _ :: t -> progress t
 
+    let progress2 =
+      let rec steps last elems =
+        match elems with
+          | (ts: Time.Stamp, Action.Next (s, ss)) :: t | (ts, Action.Previous (s, ss)) :: t -> let n = (toFloat s ss) in (float ts.elapsed, last) :: (float ts.elapsed, n) :: steps n t
+          | [] -> []
+          | _ :: t -> steps last t
+      steps 0.0
+
     let normalize l =
       let _, m = l |> List.maxBy (fun (_, y) -> y)
       l |> List.map (fun (x, y) -> x, y / m)
@@ -83,12 +91,12 @@ let entries = argv.Head |> Action.parseFile
 let gp = new GnuPlot()
 gp.Set(style = Style(fill = Pattern 1))
 gp.SendCommand "set xlabel 'Time (s)'"
-gp.SendCommand "set ylabel 'Progress (normalized)'"
+gp.SendCommand "set ylabel 'Progress (manual steps)'"
 gp.SendCommand "set term svg"
 gp.SendCommand "set output 'plot'"
-[ Series.Points (title="attention", data=(entries |> Session.attention |> (Session.toPoints 0.3)))
-  Series.Points (title="zoom", data=(entries |> Session.zoom |> (Session.toPoints 0.2)))
-  Series.Points (title="rotate", data=(entries |> Session.rotate |> (Session.toPoints 0.1)))
-  Series.Lines (title="progress", weight=2, data=(entries |> Session.progress |> Session.normalize))
+[ Series.Points (title="attention", data=(entries |> Session.attention |> (Session.toPoints 3.0)))
+  Series.Points (title="zoom", data=(entries |> Session.zoom |> (Session.toPoints 2.0)))
+  Series.Points (title="rotate", data=(entries |> Session.rotate |> (Session.toPoints 1.0)))
+  Series.Lines (title="progress", weight=2, data=(entries |> Session.progress2))
   ]
 |> gp.Plot
