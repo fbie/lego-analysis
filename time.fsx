@@ -27,5 +27,5 @@ module Time =
   let stamp (time: string) (start: string) =
     Stamp (secs (float time), secs (float start))
 
-  let overload stamp (time: float) (start: float) =
-    Stamp (secs time, secs start)
+  let empty =
+    Stamp (secs 0.0, secs 0.0)

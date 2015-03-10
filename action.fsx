@@ -29,7 +29,7 @@ module Action =
   let private maybeEntry (e: string array) =
     if e.Length > 1
     then ((Time.stamp e.[0] e.[1]), (makeAction e.[2..]))
-    else (Time.stamp 0.0 0.0, None)
+    else (Time.empty, None)
 
   let rec normalize =
     function
