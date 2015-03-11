@@ -20,24 +20,24 @@ module Session =
   let print prefix x =
     printfn "%s=%A" prefix x
 
-  let rec duration =
-    function
-      | [] -> 0.0<s>
-      | (ts: Stamp, _) :: [] -> ts.elapsed
-      | (_, Duration d) :: t -> d
-      | _ :: t -> duration t
+  let duration =
+    Seq.pick (fun (_, a) -> match a with
+                              | Duration d -> Some d
+                              | _ -> None)
 
-  let rec next =
-    function
-      | [] -> 0
-      | (_, Next _) :: t -> 1 + next t
-      | _ :: t -> next t
+  let next aSeq =
+    let f s (_, a) =
+      match a with
+        | Next _ -> 1 + s
+        | _ -> s
+    Seq.fold f 0 aSeq
 
-  let rec prev =
-    function
-      | [] -> 0
-      | (_, Previous _) :: t -> 1 + prev t
-      | _ :: t -> prev t
+  let prev aSeq =
+    let f s (_, a) =
+      match a with
+        | Previous _ -> 1 + s
+        | _ -> s
+    Seq.fold f 0 aSeq
 
   let private toFloat s ss =
     if ss = 0 then float s else float s - 1.0 + (float ss) / 10.0
@@ -60,28 +60,22 @@ module Session =
     let _, m = l |> Seq.maxBy (fun (_, y) -> y)
     l |> Seq.map (fun (x, y) -> x, y / m)
 
-  let rec zoom =
-    function
-      | (ts: Stamp, Action.Zoom _) :: t -> float ts.elapsed :: zoom t
-      | _ :: t -> zoom t
-      | [] -> []
+  let private timestamps f =
+    Seq.choose (fun (t: Stamp, a) -> if f a then Some (float t.elapsed) else None)
 
-  let rec rotate =
-    function
-      | (ts: Stamp, Action.Rotation _) :: t -> float ts.elapsed :: rotate t
-      | _ :: t -> rotate t
-      | [] -> []
+  let zoom = timestamps (fun a -> match a with | Zoom _ -> true | _ -> false)
+  let rotate = timestamps (fun a -> match a with | Rotation _ -> true | _ -> false)
 
   let toPoints h elems =
-    elems |> List.map (fun e -> (e, h))
+    elems |> Seq.map (fun e -> (e, h))
 
   let attention actions =
     let rec intervals last actions =
       match actions with
         | (ts: Stamp, Tracking b) :: t -> match b with
                                             | true -> intervals ts.elapsed t
-                                            | false -> seq {for p in int last .. int ts.elapsed -> float p} :: intervals 0.0<s> t
-        | (ts, a) :: [] -> if last <> 0.0<s> then seq {for p in int last .. int ts.elapsed -> float p} :: [] else []
+                                            | false -> seq { for p in int last .. int ts.elapsed -> float p } :: intervals 0.0<s> t
+        | (ts, a) :: [] -> if last <> 0.0<s> then seq { for p in int last .. int ts.elapsed -> float p } :: [] else []
         | _ :: t -> intervals last t
         | [] -> []
     actions
