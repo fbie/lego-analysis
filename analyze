@@ -1,1 +1,1 @@
-fsharpi session.fsx -- $@ && open plot
+fsharpi session.fsx -- $(cd $(dirname $1); echo "$(pwd)/$(basename $1)") && open plot
