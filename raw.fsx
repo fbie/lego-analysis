@@ -45,7 +45,7 @@ module Raw =
      startT = secs (row?startT.AsFloat())}
 
   let private load (csv: string) =
-    CsvFile.Load(csv)
+    CsvFile.Load(csv, separators=";")
 
   let parse csv =
     let raw = load csv
