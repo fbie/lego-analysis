@@ -2,6 +2,7 @@
 open Time
 
 module Action =
+  open Time
   type Action =
     | Tracking of bool
     | Zoom of     float
@@ -22,14 +23,14 @@ module Action =
       | [|"Dwell time exceeded"; direction|] -> Some (Dwell direction)
       | [|"Next step"; step; substep|] -> Some (Next (int step, int substep))
       | [|"Previous step"; step; substep|] -> Some (Previous (int step, int substep))
-      | [|"Time to completion"; ms|] -> Some (Duration ((float ms) |> Time.millis |> Time.millisToSecs))
+      | [|"Time to completion"; ms|] -> Some (Duration ((float ms) |> millis |> millisToSecs))
       | [|"Done"|] -> Some Done
       | _ -> None
 
   let private maybeEntry (e: string array) =
     if e.Length > 1
-    then ((Time.stamp e.[0] e.[1]), (makeAction e.[2..]))
-    else (Time.empty, None)
+    then ((stamp e.[0] e.[1]), (makeAction e.[2..]))
+    else (empty, None)
 
   let rec normalize =
     function

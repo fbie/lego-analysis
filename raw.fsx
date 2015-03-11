@@ -1,7 +1,6 @@
 #r "packages/FSharp.Data.2.1.1/lib/net40/FSharp.Data.dll"
-open FSharp.Data
-
 #load "time.fsx"
+open FSharp.Data
 open Time
 
 module Raw =
