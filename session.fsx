@@ -82,8 +82,11 @@ module Session =
     |> intervals 0.0<s>
     |> List.fold (fun s t -> s @ (t |> Seq.toList)) []
 
-  let pupilSize raw =
-    raw |> Seq.map (fun (r: Raw) -> float (r.aT - r.startT), (r.leftEye.pupilSize + r.rightEye.pupilSize) / 2.0) |> normalize
+  let pupilSize =
+    Seq.map (fun (r: Raw) -> float (r.aT - r.startT), (r.leftEye.pupilSize + r.rightEye.pupilSize) / 2.0)
+    >> normalize
+    >> Seq.map (fun (t, x) -> t, x / 5.0 + 0.4) // Project onto [0.4, 0.6]
+    //>> Seq.filter (fun (_, x) -> x <> 0.0) // Remove all zero values
 
   let truncate t tList =
     tList |> Seq.filter (fun (x, _) -> x < t)
@@ -106,10 +109,10 @@ gp.SendCommand "set xlabel 'Time (s)'"
 gp.SendCommand "set ylabel 'Progress (normalized)'"
 gp.SendCommand "set term png" // svg"
 gp.SendCommand "set output 'plot'"
-[ Series.Points (title="attention", data=(entries |> Session.attention |> (Session.toPoints 0.3)))
+[ Series.Lines (title="pupil ø", data=(raw |> Session.pupilSize |> Session.truncate (entries |> Session.duration |> float)))
+  Series.Points (title="attention", data=(entries |> Session.attention |> (Session.toPoints 0.3)))
   Series.Points (title="zoom", data=(entries |> Session.zoom |> (Session.toPoints 0.2)))
   Series.Points (title="rotate", data=(entries |> Session.rotate |> (Session.toPoints 0.1)))
-  Series.Lines (title="pupil ø", data=(raw |> Session.pupilSize |> Session.truncate (entries |> Session.duration |> float)))
   Series.Lines (title="progress", weight=2, data=(entries |> Session.progress2 |> Session.normalize))
   ]
 |> gp.Plot
