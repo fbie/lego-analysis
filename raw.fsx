@@ -1,5 +1,4 @@
 #r "packages/FSharp.Data.2.1.1/lib/net40/FSharp.Data.dll"
-#load "time.fsx"
 open FSharp.Data
 open Time
 

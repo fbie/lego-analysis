@@ -1,4 +1,3 @@
-#load "time.fsx"
 open Time
 
 module Action =
@@ -11,7 +10,7 @@ module Action =
     | Dwell of    string
     | Next of     int * int
     | Previous of int * int
-    | Duration of float<Time.s>
+    | Duration of float<s>
     | Done
 
   let makeAction =
