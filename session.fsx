@@ -24,7 +24,7 @@ module Session =
     function
       | [] -> 0.0<s>
       | (ts: Stamp, _) :: [] -> ts.elapsed
-      | (_, Action.Duration d) :: t -> d
+      | (_, Duration d) :: t -> d
       | _ :: t -> duration t
 
   let rec next =
@@ -57,8 +57,8 @@ module Session =
     steps 0.0
 
   let normalize l =
-    let _, m = l |> List.maxBy (fun (_, y) -> y)
-    l |> List.map (fun (x, y) -> x, y / m)
+    let _, m = l |> Seq.maxBy (fun (_, y) -> y)
+    l |> Seq.map (fun (x, y) -> x, y / m)
 
   let rec zoom =
     function
@@ -88,6 +88,12 @@ module Session =
     |> intervals 0.0<s>
     |> List.fold (fun s t -> s @ (t |> Seq.toList)) []
 
+  let pupilSize raw =
+    raw |> Seq.map (fun (r: Raw) -> float (r.aT - r.startT), (r.leftEye.pupilSize + r.rightEye.pupilSize) / 2.0) |> normalize
+
+  let truncate t tList =
+    tList |> Seq.filter (fun (x, _) -> x < t)
+
 let rec getArgs =
   function
     | "--" :: t -> t
@@ -95,7 +101,10 @@ let rec getArgs =
     | _ :: t -> getArgs t
 
 let argv = fsi.CommandLineArgs |> Array.toList |> getArgs
-let entries = argv.Head |> Action.parseFile
+let file = argv.Head
+let rawf = file.Replace(".csv", "-raw.csv")
+let raw = rawf |> Raw.parse
+let entries = file |> Action.parseFile
 
 let gp = new GnuPlot()
 gp.Set(style = Style(fill = Pattern 1))
@@ -106,6 +115,7 @@ gp.SendCommand "set output 'plot'"
 [ Series.Points (title="attention", data=(entries |> Session.attention |> (Session.toPoints 0.3)))
   Series.Points (title="zoom", data=(entries |> Session.zoom |> (Session.toPoints 0.2)))
   Series.Points (title="rotate", data=(entries |> Session.rotate |> (Session.toPoints 0.1)))
+  Series.Lines (title="pupil ø", data=(raw |> Session.pupilSize |> Session.truncate (entries |> Session.duration |> float)))
   Series.Lines (title="progress", weight=2, data=(entries |> Session.progress2 |> Session.normalize))
   ]
 |> gp.Plot
