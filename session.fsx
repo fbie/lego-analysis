@@ -44,14 +44,16 @@ module Session =
 
   let rec progress =
     function
-      | (ts: Stamp, Next (s, ss)) :: t | (ts, Previous (s, ss)) :: t -> (float ts.elapsed, toFloat s ss) :: progress t
+      | (ts: Stamp, Next (s, ss)) :: t | (ts, Previous (s, ss)) :: t ->
+          (float ts.elapsed, toFloat s ss) :: progress t
       | [] -> []
       | _ :: t -> progress t
 
   let progress2 =
     let rec steps last elems =
       match elems with
-        | (ts: Time.Stamp, Next (s, ss)) :: t | (ts, Previous (s, ss)) :: t -> let n = (toFloat s ss) in (float ts.elapsed, last) :: (float ts.elapsed, n) :: steps n t
+        | (ts: Time.Stamp, Next (s, ss)) :: t | (ts, Previous (s, ss)) :: t ->
+            let n = (toFloat s ss) in (float ts.elapsed, last) :: (float ts.elapsed, n) :: steps n t
         | [] -> []
         | _ :: t -> steps last t
     steps 0.0
@@ -101,10 +103,10 @@ module Session =
     >> interpolate
     >> derivate
     >> normalize
-    >> Seq.map (fun (t, x) -> t, x / 10.0 + 0.1) // Project onto [0.4, 0.6]
+    >> Seq.map (fun (t, x) -> t, x / 10.0) // Project onto [0.4, 0.6]
 
-  let truncate t tList =
-    tList |> Seq.filter (fun (x, _) -> x < t)
+  let truncate t =
+    Seq.filter (fun (x, _) -> x < t)
 
 let rec getArgs =
   function
@@ -124,10 +126,21 @@ gp.SendCommand "set xlabel 'Time (s)'"
 gp.SendCommand "set ylabel 'Progress (normalized)'"
 gp.SendCommand "set term png" // svg"
 gp.SendCommand "set output 'plot'"
-[ Series.Lines (title="pupil ø", data=(raw |> Session.pupilSize |> Session.truncate (entries |> Session.duration |> float)))
-  Series.Points (title="attention", data=(entries |> Session.attention |> (Session.toPoints 0.3)))
-  Series.Points (title="zoom", data=(entries |> Session.zoom |> (Session.toPoints 0.2)))
-  Series.Points (title="rotate", data=(entries |> Session.rotate |> (Session.toPoints 0.1)))
-  Series.Lines (title="progress", weight=2, data=(entries |> Session.progress2 |> Session.normalize))
+
+let progress = entries
+               |> Session.progress2
+               |> Session.normalize
+               |> Seq.toList
+let pupils = raw
+             |> Session.pupilSize
+             |> Session.truncate (entries |> Session.duration |> float)
+             |> Seq.map (fun t -> let o = progress |> Seq.choose (fun p -> if fst p <= fst t then Some (snd p) else None) |> (fun s -> if Seq.isEmpty s then 0.0 else Seq.last s) in fst t, snd t + o)
+             |> Seq.toList
+
+[ Series.Points (title="attention", data=(entries |> Session.attention |> Session.toPoints 0.3))
+  Series.Points (title="zoom", data=(entries |> Session.zoom |> Session.toPoints 0.2))
+  Series.Points (title="rotate", data=(entries |> Session.rotate |> Session.toPoints 0.1))
+  Series.Lines (title="pupil ø", data=pupils)
+  Series.Lines (title="progress", weight=2, data=progress)
   ]
 |> gp.Plot
