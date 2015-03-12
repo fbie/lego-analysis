@@ -85,11 +85,15 @@ module Session =
   let derivate aSeq =
     aSeq |> Seq.pairwise |> Seq.map (fun (n, m) -> fst m, snd m - snd n)
 
+  let assertTemporalOrdering s =
+    ignore (s |> Seq.pairwise |> Seq.map (fun n m -> if not (fst n < fst m) then failwith "Temporal ordering violated")); s
+
   let interpolate s =
     s |> Seq.fold (fun l t -> (if not l.IsEmpty && snd t = 0.0
                                then (fst t, snd l.Head)
                                else t) :: l) []
       |> List.rev
+      |> assertTemporalOrdering
       |> List.toSeq
 
   let pupilSize =
@@ -97,8 +101,7 @@ module Session =
     >> interpolate
     >> derivate
     >> normalize
-    >> Seq.map (fun (t, x) -> t, x / 5.0 + 0.4) // Project onto [0.4, 0.6]
-    //>> Seq.filter (fun (_, x) -> x <> 0.0) // Remove all zero values
+    >> Seq.map (fun (t, x) -> t, x / 10.0 + 0.1) // Project onto [0.4, 0.6]
 
   let truncate t tList =
     tList |> Seq.filter (fun (x, _) -> x < t)
