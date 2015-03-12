@@ -82,8 +82,20 @@ module Session =
     |> intervals 0.0<s>
     |> List.fold (fun s t -> s @ (t |> Seq.toList)) []
 
+  let derivate aSeq =
+    aSeq |> Seq.pairwise |> Seq.map (fun (n, m) -> fst m, snd m - snd n)
+
+  let interpolate s =
+    s |> Seq.fold (fun l t -> (if not l.IsEmpty && snd t = 0.0
+                               then (fst t, snd l.Head)
+                               else t) :: l) []
+      |> List.rev
+      |> List.toSeq
+
   let pupilSize =
     Seq.map (fun (r: Raw) -> float (r.aT - r.startT), (r.leftEye.pupilSize + r.rightEye.pupilSize) / 2.0)
+    >> interpolate
+    >> derivate
     >> normalize
     >> Seq.map (fun (t, x) -> t, x / 5.0 + 0.4) // Project onto [0.4, 0.6]
     //>> Seq.filter (fun (_, x) -> x <> 0.0) // Remove all zero values
