@@ -1,10 +1,7 @@
-#r "packages/FnuPlot.0.1.1-beta/lib/net40/FnuPlot.dll"
-
 #load "time.fsx"
 #load "action.fsx"
 #load "raw.fsx"
 
-open FnuPlot
 open System
 open System.Drawing
 
@@ -20,10 +17,10 @@ module Session =
   let print prefix x =
     printfn "%s=%A" prefix x
 
-  let duration =
-    Seq.pick (fun (_, a) -> match a with
-                              | Duration d -> Some d
-                              | _ -> None)
+  let duration aSeq =
+    aSeq |> Seq.pick (fun (_, a) -> match a with
+                                      | Duration d -> Some d
+                                      | _ -> None)
 
   let next aSeq =
     let f s (_, a) =
@@ -65,8 +62,11 @@ module Session =
   let private timestamps f =
     Seq.choose (fun (t: Stamp, a) -> if f a then Some (float t.elapsed) else None)
 
-  let zoom = timestamps (fun a -> match a with | Zoom _ -> true | _ -> false)
-  let rotate = timestamps (fun a -> match a with | Rotation _ -> true | _ -> false)
+  let zoom aSeq =
+    aSeq |> timestamps (fun a -> match a with | Zoom _ -> true | _ -> false)
+
+  let rotate aSeq =
+    aSeq |> timestamps (fun a -> match a with | Rotation _ -> true | _ -> false)
 
   let toPoints h elems =
     elems |> Seq.map (fun e -> (e, h))
@@ -98,49 +98,13 @@ module Session =
       |> assertTemporalOrdering
       |> List.toSeq
 
-  let pupilSize =
-    Seq.map (fun (r: Raw) -> float (r.aT - r.startT), (r.leftEye.pupilSize + r.rightEye.pupilSize) / 2.0)
-    >> interpolate
-    >> derivate
-    >> normalize
-    >> Seq.map (fun (t, x) -> t, x / 10.0) // Project onto [0.4, 0.6]
+  let pupilSize aSeq =
+    aSeq
+    |> Seq.map (fun (r: Raw) -> float (r.aT - r.startT), (r.leftEye.pupilSize + r.rightEye.pupilSize) / 2.0)
+    |> interpolate
+    |> derivate
+    |> normalize
+    |> Seq.map (fun (t, x) -> t, x / 10.0) // Project onto [0.4, 0.6]
 
   let truncate t =
     Seq.filter (fun (x, _) -> x < t)
-
-let rec getArgs =
-  function
-    | "--" :: t -> t
-    | [] -> []
-    | _ :: t -> getArgs t
-
-let argv = fsi.CommandLineArgs |> Array.toList |> getArgs
-let file = argv.Head
-let rawf = file.Replace(".csv", "-raw.csv")
-let raw = rawf |> Raw.parse
-let entries = file |> Action.parseFile
-
-let gp = new GnuPlot()
-gp.Set(style = Style(fill = Pattern 1))
-gp.SendCommand "set xlabel 'Time (s)'"
-gp.SendCommand "set ylabel 'Progress (normalized)'"
-gp.SendCommand "set term png" // svg"
-gp.SendCommand "set output 'plot'"
-
-let progress = entries
-               |> Session.progress2
-               |> Session.normalize
-               |> Seq.toList
-let pupils = raw
-             |> Session.pupilSize
-             |> Session.truncate (entries |> Session.duration |> float)
-             |> Seq.map (fun t -> let o = progress |> Seq.choose (fun p -> if fst p <= fst t then Some (snd p) else None) |> (fun s -> if Seq.isEmpty s then 0.0 else Seq.last s) in fst t, snd t + o)
-             |> Seq.toList
-
-[ Series.Points (title="attention", data=(entries |> Session.attention |> Session.toPoints 0.3))
-  Series.Points (title="zoom", data=(entries |> Session.zoom |> Session.toPoints 0.2))
-  Series.Points (title="rotate", data=(entries |> Session.rotate |> Session.toPoints 0.1))
-  Series.Lines (title="pupil ø", data=pupils)
-  Series.Lines (title="progress", weight=2, data=progress)
-  ]
-|> gp.Plot
