@@ -88,15 +88,35 @@ module Session =
     aSeq |> Seq.pairwise |> Seq.map (fun (n, m) -> fst m, snd m - snd n)
 
   let assertTemporalOrdering s =
-    ignore (s |> Seq.pairwise |> Seq.map (fun n m -> if not (fst n < fst m) then failwith "Temporal ordering violated")); s
+    s |> Seq.pairwise |> Seq.iter (fun (n, m) -> if not (fst n < fst m) then failwith "Temporal ordering violated"); s
 
   let interpolate s =
     s |> Seq.fold (fun l t -> (if not l.IsEmpty && snd t = 0.0
                                then (fst t, snd l.Head)
                                else t) :: l) []
       |> List.rev
-      |> assertTemporalOrdering
       |> List.toSeq
+
+  let std aSeq =
+    if not (Seq.isEmpty aSeq) then
+      let avg = Seq.average aSeq
+      (Seq.fold (fun s x -> s + (x - avg) ** 2.0) 0.0 aSeq |> sqrt) / (Seq.length >> float) aSeq
+    else
+      0.0
+
+  let sstd aSeq =
+    if Seq.length aSeq > 1 then
+      let avg = Seq.average aSeq
+      (Seq.fold (fun s x -> s + (x - avg) ** 2.0) 0.0 aSeq |> sqrt) / ((Seq.length >> float) aSeq - 1.0)
+    else
+      0.0
+
+  let sem aSeq =
+    let n = Seq.length aSeq
+    if n > 0 then
+      sstd aSeq / float n
+    else
+      0.0
 
   let pupilSize aSeq =
     aSeq
