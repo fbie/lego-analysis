@@ -11,14 +11,20 @@ let rec getArgs =
     | _ :: t -> getArgs t
 
 let chart kind title (data: ('a *'b) seq) =
-  let ps = Seq.map (fun (x, y) -> "(" + (string x) + "," + (string y) + ")") >> Seq.toList >> String.concat ";"
-  printfn "type=%s title=%s data=%s" kind title (ps data)
+  let ps = Seq.map (fun (x, y) -> "(" + (string x) + "," + (string y) + ")") >> Seq.toList >> String.concat ","
+  printfn "cmd=%s;title=%s;data=%s;%s" kind title (ps data)
 
 let points =
   chart "points"
 
 let lines =
   chart "lines"
+
+let xaxis =
+  printfn "cmd=xaxis;label=%s"
+
+let yaxis =
+  printfn "cmd=yaxis;label=%s"
 
 let show =
   printfn "";
@@ -39,8 +45,12 @@ let pupils = raw
                                           |> (fun s -> if Seq.isEmpty s then 0.0 else Seq.last s)
                                   fst t, snd t + o)
 
-points "attention" ((Seq.toList >> Session.attention >> (Session.toPoints 0.3)) entries)
-points "zoom" ((Session.zoom >> (Session.toPoints 0.2)) entries)
-points "rotate" ((Session.rotate >> (Session.toPoints 0.1)) entries)
-lines "pupil ø" pupils
-lines "progress" progress
+xaxis "Time (s)"
+yaxis "Progress (normalized)"
+
+points "attention" ((Seq.toList >> Session.attention >> (Session.toPoints 0.3)) entries) ""
+points "zoom" ((Session.zoom >> (Session.toPoints 0.2)) entries) ""
+points "rotate" ((Session.rotate >> (Session.toPoints 0.1)) entries) ""
+
+lines "pupils" pupils "alpha=0.5"
+lines "progress" progress "width=2"

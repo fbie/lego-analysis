@@ -128,4 +128,4 @@ module Session =
     |> Seq.map (fun (t, x) -> t, x / 10.0)
 
   let truncate t =
-    Seq.filter (fun (x, _) -> x < t)
+    Seq.filter (fun (x, _) -> x <= t)
