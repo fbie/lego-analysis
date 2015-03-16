@@ -75,8 +75,8 @@ module Session =
     let rec intervals last actions =
       match actions with
         | (ts, Tracking b) :: t -> match b with
-                                               | true -> intervals ts t
-                                               | false -> seq { for p in int last .. int ts -> secs (float p) } :: intervals 0.0<s> t
+                                   | true -> intervals ts t
+                                   | false -> seq { for p in int last .. int ts -> secs (float p) } :: intervals 0.0<s> t
         | (ts, a) :: [] -> if last <> 0.0<s> then seq { for p in int last .. int ts -> secs (float p) } :: [] else []
         | _ :: t -> intervals last t
         | [] -> []

@@ -33,8 +33,8 @@ module Action =
 
   let normalize aSeq =
     let m = aSeq |> Seq.findIndex (fun x -> match x with
-                                              | (_, Done) -> true
-                                              | _ -> false)
+                                            | (_, Done) -> true
+                                            | _ -> false)
     Seq.truncate m aSeq
 
   let rec private unoption =
