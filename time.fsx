@@ -21,11 +21,9 @@ module Time =
   let millisToMins (t: float<ms>) =
     t |> millisToSecs |> secsToMins
 
-  type Stamp (time, start) =
-    member this.elapsed = if start = 0.0<s> then start else time - start
-
   let stamp (time: string) (start: string) =
-    Stamp (secs (float time), secs (float start))
+    let t = (float >> secs) time
+    let s = (float >> secs) start
+    if s <> 0.0<s> then t - s else s
 
-  let empty =
-    Stamp (secs 0.0, secs 0.0)
+  let empty = 0.0<s>

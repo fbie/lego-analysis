@@ -31,11 +31,11 @@ module Action =
     then ((stamp e.[0] e.[1]), (makeAction e.[2..]))
     else (empty, None)
 
-  let rec normalize =
-    function
-      | [] -> []
-      | (_, Action.Done) :: t -> []
-      | h :: t -> h :: normalize t
+  let normalize aSeq =
+    let m = aSeq |> Seq.findIndex (fun x -> match x with
+                                              | (_, Done) -> true
+                                              | _ -> false)
+    Seq.truncate m aSeq
 
   let rec private unoption =
     function
@@ -56,5 +56,4 @@ module Action =
     filePath
     |> readLines
     |> makeEntries
-    |> Seq.toList
     |> normalize
