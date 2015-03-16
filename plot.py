@@ -50,7 +50,7 @@ for l in fileinput.input():
         cmd = superdefaultdict(line)
         eval(cmd["cmd"])(cmd)
     except Exception as e:
-        print e
+        print("Error: %s", e)
 
 plt.legend()
 plt.show()
