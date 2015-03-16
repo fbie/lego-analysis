@@ -15,14 +15,13 @@ MARKERCOLORS = list(c + m for m in MARKERS for c in COLORS)[::-1]
 DEFAULT = { 'label': '', 'alpha': 1.0, 'width': 1 }
 
 class superdefaultdict(defaultdict):
-    def __init__(self, fun, vals):
-        self.fun = fun
+    def __init__(self, vals):
         defaultdict.__init__(self, None, vals)
 
     def __getitem__(self, key):
         val = self.get(key)
         if not val:
-            return self.fun(key)
+            return DEFAULT[key]
         return val
 
 def points(cmd):
@@ -48,7 +47,7 @@ for l in fileinput.input():
         continue
     line = map(lambda x: x.split('='), [s for s in l.strip().split(';') if s])
     try:
-        cmd = superdefaultdict(lambda x: DEFAULT[x], line)
+        cmd = superdefaultdict(line)
         eval(cmd["cmd"])(cmd)
     except Exception as e:
         print e
