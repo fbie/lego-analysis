@@ -12,7 +12,7 @@ let rec getArgs =
 
 let chart kind title (data: ('a *'b) seq) =
   let ps = Seq.map (fun (x, y) -> "(" + (string x) + "," + (string y) + ")") >> Seq.toList >> String.concat ","
-  printfn "cmd=%s;title=%s;data=%s;%s" kind title (ps data)
+  printfn "cmd=%s;label=%s;data=%s;%s" kind title (ps data)
 
 let points =
   chart "points"
@@ -26,31 +26,37 @@ let xaxis =
 let yaxis =
   printfn "cmd=yaxis;label=%s"
 
-let show =
-  printfn "";
+let legend =
+  printfn "cmd=legend;%s"
+
+let subplot =
+  printfn "cmd=subplot;width=%d;height=%d"
 
 let argv = fsi.CommandLineArgs |> Array.toList |> getArgs
 let file = argv.Head
 let raw = file.Replace(".csv", "-raw.csv") |> Raw.parse
 let entries = file |> Action.parseFile
+let trunc = Session.truncate (entries |> Session.duration)
 let progress = entries
                |> Seq.toList
                |> Session.progress2
                |> Session.normalize
 let pupils = raw
              |> Session.pupilSize
-             |> Session.truncate (entries |> Session.duration)
-             |> Seq.map (fun t -> let o = progress
-                                          |> Seq.choose (fun p -> if fst p <= fst t then Some (snd p) else None)
-                                          |> (fun s -> if Seq.isEmpty s then 0.0 else Seq.last s)
-                                  fst t, snd t + o)
+             |> trunc
 
-xaxis "Time (s)"
-yaxis "Progress (normalized)"
-
-points "attention" ((Seq.toList >> Session.attention >> (Session.toPoints 0.3)) entries) ""
-points "zoom" ((Session.zoom >> (Session.toPoints 0.2)) entries) ""
-points "rotate" ((Session.rotate >> (Session.toPoints 0.1)) entries) ""
-
+subplot 3 1
+yaxis "Dilation dx (normalized)"
 lines "pupils" pupils "alpha=0.5"
+
+subplot 3 1
+yaxis "Progress (normalized)"
 lines "progress" progress "width=2"
+
+subplot 3 1
+xaxis "Time (s)"
+points "attention" ((Seq.toList >> Session.attention >> (Session.toPoints 0.75) >> trunc) entries) ""
+points "zoom" ((Session.zoom >> (Session.toPoints 0.5) >> trunc) entries) ""
+points "rotate" ((Session.rotate >> (Session.toPoints 0.25) >> trunc) entries) ""
+
+legend ""
