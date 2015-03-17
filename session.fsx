@@ -122,6 +122,10 @@ module Session =
     else
       0.0
 
+  let filterOutliers aSeq =
+    let lim = 2.0 * (aSeq |> Seq.map (fun x -> snd x) |> std)
+    aSeq |> Seq.filter (fun x -> snd x >= lim)
+
   let applyR f aSeq =
     Seq.zip (aSeq |> Array.map (fun x -> fst x)) (aSeq |> Array.map (fun x -> snd x) |> f)
 
@@ -129,7 +133,7 @@ module Session =
     aSeq
     |> Seq.map (fun (r: Raw) -> (r.aT - r.startT), (r.leftEye.pupilSize + r.rightEye.pupilSize) / 2.0)
     |> interpolate
-    |> derivate
+    |> filterOutliers
     |> Seq.toArray
     |> applyR Waves.d4
     |> normalize
