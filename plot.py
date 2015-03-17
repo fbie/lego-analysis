@@ -57,15 +57,12 @@ class Plotter:
 
     def subplot(self, cmd):
         self.sp_last = plt.subplot(int(cmd['width']), int(cmd['height']), self.sp_id)
-        print self.sp_last == None
         self.sp_id += 1
 
     def legend(self, cmd):
         if self.sp_last:
-            print 'self.sp_last.legend()'
             self.sp_last.legend()
         else:
-            print 'plt.legend()'
             plt.legend()
 
 plotter = Plotter()
