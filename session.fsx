@@ -93,13 +93,13 @@ module Session =
   let assertTemporalOrdering s =
     s |> Seq.pairwise |> Seq.iter (fun (n, m) -> if not (fst n < fst m) then failwith "Temporal ordering violated"); s
 
-  let interpolate =
-    Seq.fold (fun l t -> (if not l.IsEmpty && snd t = 0.0 then
-                                 (fst t, snd l.Head)
-                               else
-                                 t) :: l) []
-    >> List.rev
-    >> List.toSeq
+  let interpolate aSeq =
+    aSeq |> Seq.fold (fun l t -> (if not l.IsEmpty && snd t = 0.0 then
+                                    (fst t, snd l.Head)
+                                  else
+                                    t) :: l) []
+         |> List.rev
+         |> List.toSeq
 
   let std aSeq =
     if not (Seq.isEmpty aSeq) then
