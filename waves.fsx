@@ -1,17 +1,30 @@
 module Waves =
-  let coeffs = [| 0.4829629131; 0.8365163037; 0.2241438680; -0.1294095226 |]
-  let scales = [| coeffs.[3]; -coeffs.[2]; coeffs.[1]; -coeffs.[0] |]
+  let private dot a b =
+    Array.map2 (fun x y -> x * y) a b |> Array.sum
+
+  let private window i n (arr: 'a []) =
+    [| for j in 0 .. n - 1 do yield arr.[i + j] |]
+
+  let private wrap n (arr: 'a []) =
+    let l = Array.length arr - 1
+    [| for j in -(n >>> 1) .. (n >>> 1) - 1 do yield if j < 0 then arr.[l + j] else arr.[j] |]
 
   // See http://fsharpnews.blogspot.dk/2006/12/array-manipulation-continued.html
-  let d4 a =
-    let rec d4_aux (a: float []) n =
-      let n2 = n >>> 1 in
-      let tmp = Array.create n 0.
-      for i = 0 to (n2 - 2) do
-        tmp.[i] <- a.[i*2] * coeffs.[0] + a.[i*2+1] * coeffs.[1] + a.[i*2+2] * coeffs.[2] + a.[i*2+3] * coeffs.[3];
-        tmp.[i+n2] <- a.[i*2] * scales.[0] + a.[i*2+1] * scales.[1] + a.[i*2+2] * scales.[2] + a.[i*2+3] * scales.[3];
-      tmp.[n2 - 1] <- a.[n-2] * coeffs.[0] + a.[n-1] * coeffs.[1] + a.[0] * coeffs.[2] + a.[1] * coeffs.[3];
-      tmp.[2 * n2 - 1] <- a.[n-2] * scales.[0] + a.[n-1] * scales.[1] + a.[0] * scales.[2] + a.[1] * scales.[3];
-      Array.blit tmp 0 a 0 n;
-      if n > 4 then d4_aux a n2 else a
-    d4_aux a (Array.length a)
+  let rec private transform h g a n =
+    let n2 = n >>> 1 in
+    let d = Array.length h
+    let tmp = Array.create n 0.
+    for i = 0 to (n2 - d / 2) - 1 do
+      let win = window (i * 2) d a
+      tmp.[i] <- dot win h
+      tmp.[i + n2] <- dot win g
+    let wrap = wrap d a
+    tmp.[n2 - 1] <- dot wrap h
+    tmp.[2 * n2 - 1] <- dot wrap g
+    Array.blit tmp 0 a 0 n;
+    if n > d then transform h g a n2 else a
+
+  let d2 a =
+    let h = [| -0.12940952255092145; 0.22414386804185735; 0.836516303737469; 0.48296291314469025 |]
+    let g = [| -0.48296291314469025; 0.836516303737469; -0.22414386804185735; -0.12940952255092145 |]
+    transform h g a (Array.length a)
