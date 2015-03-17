@@ -135,7 +135,7 @@ module Session =
     |> interpolate
     |> filterOutliers
     |> Seq.toArray
-    |> applyR Waves.d2
+    |> applyR Waves.d7
     |> normalize
 
   let truncate t =
