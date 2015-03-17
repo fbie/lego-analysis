@@ -52,8 +52,14 @@ class Plotter:
     def xaxis(self, cmd):
         plt.xlabel(cmd['label'])
 
+    def xlim(self, cmd):
+        plt.xlim((float(cmd['xmin']), float(cmd['xmax'])))
+
     def yaxis(self, cmd):
         plt.ylabel(cmd['label'])
+
+    def ylim(self, cmd):
+        plt.ylim((float(cmd['ymin']), float(cmd['ymax'])))
 
     def subplot(self, cmd):
         self.sp_last = plt.subplot(int(cmd['width']), int(cmd['height']), self.sp_id)

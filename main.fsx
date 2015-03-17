@@ -23,8 +23,14 @@ let lines =
 let xaxis =
   printfn "cmd=xaxis;label=%s"
 
+let xlim =
+  printfn "cmd=xlim;xmin=%f;xmax=%f"
+
 let yaxis =
   printfn "cmd=yaxis;label=%s"
+
+let ylim =
+  printfn "cmd=ylim;ymin=%f;ymax=%f"
 
 let legend =
   printfn "cmd=legend;%s"
@@ -36,7 +42,8 @@ let argv = fsi.CommandLineArgs |> Array.toList |> getArgs
 let file = argv.Head
 let raw = file.Replace(".csv", "-raw.csv") |> Raw.parse
 let entries = file |> Action.parseFile
-let trunc = Session.truncate (entries |> Session.duration)
+let duration = entries |> Session.duration
+let trunc = Session.truncate duration
 let progress = entries
                |> Seq.toList
                |> Session.progress2
@@ -46,17 +53,22 @@ let pupils = raw
              |> trunc
 
 subplot 3 1
+xlim 0.0 (float duration)
 yaxis "Dilation dx (normalized)"
 lines "pupils" pupils "alpha=0.5"
 
 subplot 3 1
+xlim 0.0 (float duration)
+ylim 0.0 1.1
 yaxis "Progress (normalized)"
 lines "progress" progress "width=2"
 
 subplot 3 1
+xlim 0.0 (float duration)
+ylim 0.0 1.0
 xaxis "Time (s)"
-points "attention" ((Seq.toList >> Session.attention >> (Session.toPoints 0.75) >> trunc) entries) ""
-points "zoom" ((Session.zoom >> (Session.toPoints 0.5) >> trunc) entries) ""
-points "rotate" ((Session.rotate >> (Session.toPoints 0.25) >> trunc) entries) ""
+points "attention" ((Seq.toList >> Session.attention >> (Session.toPoints 0.5) >> trunc) entries) ""
+points "zoom" ((Session.zoom >> (Session.toPoints 0.3) >> trunc) entries) ""
+points "rotate" ((Session.rotate >> (Session.toPoints 0.1) >> trunc) entries) ""
 
 legend ""
