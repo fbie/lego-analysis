@@ -20,8 +20,8 @@ module Session =
     printfn "%s=%A" prefix x
 
   let duration aSeq =
-    aSeq |> Seq.pick (fun (_, a) -> match a with
-                                      | Duration d -> Some d
+    aSeq |> Seq.pick (fun (ts, a) -> match a with
+                                      | Duration d -> Some ts
                                       | _ -> None)
 
   let next aSeq =
