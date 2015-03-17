@@ -1,6 +1,7 @@
 #load "time.fsx"
 #load "action.fsx"
 #load "raw.fsx"
+#load "waves.fsx"
 
 open System
 open System.Drawing
@@ -8,6 +9,7 @@ open System.Drawing
 open Action
 open Time
 open Raw
+open Waves
 
 module Session =
   open Action
@@ -53,9 +55,9 @@ module Session =
           (ts, last) :: (ts, n) :: steps n t
         | [] -> []
         | _ :: t -> steps last t
-    steps 0.0 aSeq
+    steps 0.0 aSeq |> List.toSeq
 
-  let normalize l =
+  let normalize (l: seq<'a * float>) =
     let _, m = l |> Seq.maxBy (fun (_, y) -> y)
     l |> Seq.map (fun (x, y) -> x, y / m)
 
@@ -68,8 +70,8 @@ module Session =
   let rotate aSeq =
     aSeq |> timestamps (fun a -> match a with | Rotation _ -> true | _ -> false)
 
-  let toPoints h =
-    Seq.map (fun e -> (e, h))
+  let toPoints h aSeq =
+    aSeq |> Seq.map (fun e -> (e, h))
 
   let attention actions =
     let rec intervals last actions =
@@ -83,9 +85,10 @@ module Session =
     actions
     |> intervals 0.0<s>
     |> List.fold (fun s t -> s @ (t |> Seq.toList)) []
+    |> List.toSeq
 
-  let derivate =
-    Seq.pairwise >> Seq.map (fun (n, m) -> fst m, snd m - snd n)
+  let derivate aSeq =
+    aSeq |> Seq.pairwise |> Seq.map (fun (n, m) -> fst m, snd m - snd n)
 
   let assertTemporalOrdering s =
     s |> Seq.pairwise |> Seq.iter (fun (n, m) -> if not (fst n < fst m) then failwith "Temporal ordering violated"); s
@@ -119,13 +122,18 @@ module Session =
     else
       0.0
 
+  let applyR f aSeq =
+    Seq.zip (aSeq |> Array.map (fun x -> fst x)) (aSeq |> Array.map (fun x -> snd x) |> f)
+
   let pupilSize aSeq =
     aSeq
     |> Seq.map (fun (r: Raw) -> (r.aT - r.startT), (r.leftEye.pupilSize + r.rightEye.pupilSize) / 2.0)
     |> interpolate
     |> derivate
+    |> Seq.toArray
+    |> applyR Waves.d4
     |> normalize
-    |> Seq.map (fun (t, x) -> t, x / 10.0)
+
 
   let truncate t =
     Seq.filter (fun (x, _) -> x <= t)
