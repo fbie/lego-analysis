@@ -134,6 +134,5 @@ module Session =
     |> applyR Waves.d4
     |> normalize
 
-
   let truncate t =
     Seq.filter (fun (x, _) -> x <= t)
