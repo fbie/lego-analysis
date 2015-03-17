@@ -25,22 +25,30 @@ class superdefaultdict(defaultdict):
         return val
 
 def points(cmd):
-    title = cmd["title"]
-    data = eval(cmd["data"])
+    data = eval(cmd['data'])
     s = MARKERCOLORS.pop()
-    plt.scatter([x for x,y in data], [y for x,y in data], c=s[0], marker=s[1], alpha=0.5, label=title, antialiased=True)
+    plt.scatter([x for x,y in data],
+                [y for x,y in data],
+                c=s[0], marker=s[1],
+                alpha=0.5,
+                label=cmd['title'],
+                antialiased=True)
 
 def lines(cmd):
-    title = cmd["title"]
-    data = eval(cmd["data"])
-    plt.plot([x for x,y in data], [y for x,y in data], LINECOLORS.pop(), label=title, alpha=float(cmd['alpha']), linewidth=int(cmd['width']), antialiased=True)
+    data = eval(cmd['data'])
+    plt.plot([x for x,y in data],
+             [y for x,y in data],
+             LINECOLORS.pop(),
+             label=cmd['title'],
+             alpha=float(cmd['alpha']),
+             linewidth=int(cmd['width']),
+             antialiased=True)
 
 def xaxis(cmd):
     plt.xlabel(cmd["label"])
 
 def yaxis(cmd):
     plt.ylabel(cmd["label"])
-
 
 for l in fileinput.input():
     if l in (' ', '\n'):
