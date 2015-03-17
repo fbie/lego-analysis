@@ -54,7 +54,8 @@ let pupils = raw
 
 subplot 3 1
 xlim 0.0 (float duration)
-yaxis "Dilation dx (normalized)"
+ylim -0.5 0.5
+yaxis "Dilation (normalized)"
 lines "pupils" pupils "alpha=0.5"
 
 subplot 3 1
