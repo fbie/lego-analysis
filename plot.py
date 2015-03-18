@@ -72,6 +72,14 @@ class Plotter:
         else:
             plt.legend()
 
+    def done(self, cmd):
+        args = sys.argv[1:]
+        if len(args) != 0:
+            plt.savefig(args[0].split('.')[0] + '.png')
+        else:
+            plt.show()
+        sys.exit(0)
+
 plotter = Plotter()
 for l in sys.stdin:
     if l in string.whitespace:
@@ -82,9 +90,4 @@ for l in sys.stdin:
         eval('plotter.' + cmd['cmd'])(cmd)
     except Exception as e:
         print("Error: %s\nInput:%s", (e, l))
-
-args = sys.argv[1:]
-if len(args) != 0:
-    plt.savefig(args[0].split('.')[0] + '.png')
-else:
-    plt.show()
+sys.exit(1)
