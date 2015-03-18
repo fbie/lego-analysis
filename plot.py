@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 from collections import defaultdict
-import fileinput
+import string
 import sys
 import matplotlib.pyplot as plt
 
@@ -28,6 +28,7 @@ class Plotter:
     def __init__(self):
         self.sp_last = None
         self.sp_id = 1
+        plt.figure(figsize=(16, 9), dpi=92)
 
     def points(self, cmd):
         data = eval(cmd['data'])
@@ -72,13 +73,18 @@ class Plotter:
             plt.legend()
 
 plotter = Plotter()
-for l in fileinput.input():
-    if l in (' ', '\n'):
+for l in sys.stdin:
+    if l in string.whitespace:
         continue
     line = map(lambda x: x.split('='), [s for s in l.strip().split(';') if s])
     try:
         cmd = superdefaultdict(line)
         eval('plotter.' + cmd['cmd'])(cmd)
     except Exception as e:
-        print("Error: %s", e)
-plt.show()
+        print("Error: %s\nInput:%s", (e, l))
+
+args = sys.argv[1:]
+if len(args) != 0:
+    plt.savefig(args[0].split('.')[0] + '.png')
+else:
+    plt.show()
