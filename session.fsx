@@ -16,31 +16,6 @@ module Session =
   open Time
   open Raw
 
-  let print prefix x =
-    printfn "%s=%A" prefix x
-
-  let duration aSeq =
-    try
-      aSeq |> Seq.pick (fun (ts, a) -> match a with
-                                       | Duration d -> Some ts
-                                       | _ -> None)
-    with
-      | _ -> aSeq |> Seq.last |> fst
-
-  let next aSeq =
-    let f s (_, a) =
-      match a with
-        | Next _ -> 1 + s
-        | _ -> s
-    Seq.fold f 0 aSeq
-
-  let prev aSeq =
-    let f s (_, a) =
-      match a with
-        | Previous _ -> 1 + s
-        | _ -> s
-    Seq.fold f 0 aSeq
-
   let private toFloat s ss =
     if ss = 0 then float s else float s - 1.0 + (float ss) / 10.0
 
@@ -77,18 +52,19 @@ module Session =
     aSeq |> Seq.map (fun e -> (e, h))
 
   let attention actions =
-    let rec intervals last actions =
-      match actions with
-        | (ts, Tracking b) :: t -> match b with
-                                   | true -> intervals ts t
-                                   | false -> seq { for p in int last .. int ts -> secs (float p) } :: intervals 0.0<s> t
-        | (ts, a) :: [] -> if last <> 0.0<s> then seq { for p in int last .. int ts -> secs (float p) } :: [] else []
-        | _ :: t -> intervals last t
-        | [] -> []
-    actions
-    |> intervals 0.0<s>
-    |> List.fold (fun s t -> s @ (t |> Seq.toList)) []
-    |> List.toSeq
+    Seq.delay (fun () ->
+      let rec intervals last actions =
+        match actions with
+          | (ts, Tracking b) :: t -> match b with
+                                     | true -> intervals ts t
+                                     | false -> seq { for p in int last .. int ts -> secs (float p) } :: intervals 0.0<s> t
+          | (ts, a) :: [] -> if last <> 0.0<s> then seq { for p in int last .. int ts -> secs (float p) } :: [] else []
+          | _ :: t -> intervals last t
+          | [] -> []
+      actions
+      |> intervals 0.0<s>
+      |> List.fold (fun s t -> s @ (t |> Seq.toList)) []
+      |> List.toSeq)
 
   let derivate aSeq =
     aSeq |> Seq.pairwise |> Seq.map (fun (n, m) -> fst m, snd m - snd n)
@@ -97,12 +73,11 @@ module Session =
     s |> Seq.pairwise |> Seq.iter (fun (n, m) -> if not (fst n < fst m) then failwith "Temporal ordering violated"); s
 
   let interpolate aSeq =
-    aSeq |> Seq.fold (fun l t -> (if not l.IsEmpty && snd t = 0.0 then
-                                    (fst t, snd l.Head)
-                                  else
-                                    t) :: l) []
-         |> List.rev
-         |> List.toSeq
+    Seq.delay (fun () ->
+               aSeq |> Seq.fold (fun l t ->
+                        (if not l.IsEmpty && snd t = 0.0 then (fst t, snd l.Head) else t) :: l) []
+                    |> List.rev
+                    |> List.toSeq)
 
   let std aSeq =
     if not (Seq.isEmpty aSeq) then
@@ -140,6 +115,3 @@ module Session =
     |> Seq.toArray
     |> applyR Waves.d7
     |> normalize
-
-  let truncate t =
-    Seq.filter (fun (x, _) -> x <= t)
