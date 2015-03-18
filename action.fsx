@@ -23,21 +23,21 @@ module Action =
       | [|"Next step"; step; substep|] -> Some (Next (int step, int substep))
       | [|"Previous step"; step; substep|] -> Some (Previous (int step, int substep))
       | [|"Time to completion"; ms|] -> Some (Duration ((float ms) |> millis |> millisToSecs))
-      | [|"Done"|] -> Some Done
+      | [|"Are you done?"|] -> Some Done
       | _ -> None
 
   let private maybeEntry (e: string array) =
-    if e.Length > 1
-    then ((stamp e.[0] e.[1]), (makeAction e.[2..]))
-    else (empty, None)
+    if e.Length > 1 then
+      ((stamp e.[0] e.[1]), (makeAction e.[2..]))
+    else
+      (empty, None)
 
-  let normalize aSeq =
-    try
-      Seq.truncate (aSeq |> Seq.findIndex (fun x -> match x with
-                                                      | (_, Done) -> true
-                                                      | _ -> false)) aSeq
-    with
-      | _ -> aSeq
+  let private normalize aSeq =
+    Seq.delay (fun () ->
+      let bSeq = aSeq |> Seq.skipWhile (fun x -> match snd x with | Done -> false | _ -> true) |> Seq.skip 1
+      match bSeq |> Seq.tryFindIndex (fun x -> match snd x with | Done -> true | _ -> false) with
+      | Some i -> bSeq |> Seq.truncate i
+      | None -> bSeq)
 
   let rec private unoption =
     function
