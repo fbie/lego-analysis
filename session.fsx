@@ -6,16 +6,12 @@
 open System
 open System.Drawing
 
-open Action
-open Time
-open Raw
+open Action.Action
+open Time.Time
+open Raw.Raw
 open Waves
 
 module Session =
-  open Action
-  open Time
-  open Raw
-
   let private toFloat s ss =
     if ss = 0 then float s else float s - 1.0 + (float ss) / 10.0
 
