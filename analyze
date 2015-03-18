@@ -1,1 +1,1 @@
-fsharpi main.fsx -- $(cd $(dirname $1); echo "$(pwd)/$(basename $1)") | python plot.py plots/$(basename $1)
+fsharpi -O --warn:0 main.fsx -- $(cd $(dirname $1); echo "$(pwd)/$(basename $1)") | python plot.py plots/$(basename $1)
