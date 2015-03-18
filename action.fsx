@@ -32,10 +32,12 @@ module Action =
     else (empty, None)
 
   let normalize aSeq =
-    let m = aSeq |> Seq.findIndex (fun x -> match x with
-                                            | (_, Done) -> true
-                                            | _ -> false)
-    Seq.truncate m aSeq
+    try
+      Seq.truncate (aSeq |> Seq.findIndex (fun x -> match x with
+                                                      | (_, Done) -> true
+                                                      | _ -> false)) aSeq
+    with
+      | _ -> aSeq
 
   let rec private unoption =
     function
