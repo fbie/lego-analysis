@@ -39,17 +39,9 @@ module Action =
       | Some i -> bSeq |> Seq.truncate i
       | None -> bSeq)
 
-  let rec private unoption =
-    function
-      | (ts, None) :: t -> unoption t
-      | (ts, Some a) :: t -> (ts, a) :: (unoption t)
-      | [] -> []
-
   let makeEntries (lines: string array) =
-    lines
-    |> Seq.map (fun l -> l.Split (';') |> maybeEntry)
-    |> Seq.toList
-    |> unoption
+    let e = lines |> Seq.map (fun l -> l.Split (';') |> maybeEntry)
+    Seq.zip (e |> Seq.map (fun x -> fst x)) (e |> Seq.map (fun x -> snd x) |> Seq.choose id)
 
   let readLines filePath =
     System.IO.File.ReadAllLines(filePath)
