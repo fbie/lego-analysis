@@ -34,19 +34,22 @@ module Raw =
     { rawPos = raw; avgPos = avg; pupilSize = row.[lr + "PSz"].AsFloat();  pupilCenter = center}
 
   let private toRaw (row: CsvRow) =
-    let left  = toEye "L" row
-    let right = toEye "R" row
-    let raw = { x = row?Rwx.AsFloat(); y = row?Rwy.AsFloat() };
-    let avg = { x = row?Avx.AsFloat(); y = row?Avy.AsFloat() };
-    {eT = secs (row?eT.AsFloat()); dT = secs (row?dT.AsFloat()); aT = secs (row?aT.AsFloat());
-     fixated = row?Fix = "F"; state = row?State;
-     rawPos = raw; avgPos = avg;
-     leftEye = left; rightEye = right;
-     startT = secs (row?startT.AsFloat())}
+    try
+      let left  = toEye "L" row
+      let right = toEye "R" row
+      let raw = { x = row?Rwx.AsFloat(); y = row?Rwy.AsFloat() };
+      let avg = { x = row?Avx.AsFloat(); y = row?Avy.AsFloat() };
+      Some {eT = secs (row?eT.AsFloat()); dT = secs (row?dT.AsFloat()); aT = secs (row?aT.AsFloat());
+            fixated = row?Fix = "F"; state = row?State;
+            rawPos = raw; avgPos = avg;
+            leftEye = left; rightEye = right;
+            startT = secs (row?startT.AsFloat())}
+    with
+      | _ -> None
 
   let private load (csv: string) =
-    CsvFile.Load(csv, separators=";")
+    CsvFile.Load(csv, separators=";", ignoreErrors=true)
 
   let parse csv =
     let raw = load csv
-    raw.Rows |> Seq.map toRaw
+    raw.Rows |> Seq.map toRaw |> Seq.choose id
