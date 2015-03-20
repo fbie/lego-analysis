@@ -11,6 +11,7 @@ type Action =
   | Next of     int * int
   | Previous of int * int
   | Duration of float<s>
+  | TutorialEnd
   | Done
 
 let makeAction =
@@ -23,6 +24,7 @@ let makeAction =
     | [|"Next step"; step; substep|] -> Some (Next (int step, int substep))
     | [|"Previous step"; step; substep|] -> Some (Previous (int step, int substep))
     | [|"Time to completion"; ms|] -> Some (Duration ((float ms) |> millis |> millisToSecs))
+    | [|"Tutorial"; "end"|] -> Some TutorialEnd
     | [|"Are you done?"|] -> Some Done
     | _ -> None
 
@@ -34,8 +36,14 @@ let private maybeEntry (e: string array) =
 
 let private normalize aSeq =
   Seq.delay (fun () ->
-             let bSeq = aSeq |> Seq.skipWhile (fun x -> match snd x with | Done -> false | _ -> true) |> Seq.skip 1
-             match bSeq |> Seq.tryFindIndex (fun x -> match snd x with | Done -> true | _ -> false) with
+             let bSeq = aSeq |> Seq.skipWhile (fun x ->
+                                               match snd x with
+                                               | TutorialEnd -> false
+                                               | _ -> true)
+             match bSeq |> Seq.tryFindIndex (fun x ->
+                                             match snd x with
+                                             | Done -> true
+                                             | _ -> false) with
              | Some i -> bSeq |> Seq.truncate i
              | None -> bSeq)
 
