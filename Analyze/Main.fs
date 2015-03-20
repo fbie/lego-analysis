@@ -15,21 +15,20 @@ let analyze (file: string) =
   let progress = entries
                  |> Seq.toList
                  |> Session.progress2
-                 |> Seq.map (fun x -> fst x, snd x / 17.0)
   let pupils = raw
                |> trunc (fun x -> x.aT - x.startT)
                |> Session.pupilSize
 
   Chart.subplot 3 1
   Chart.xlim (float start) (float duration)
-  Chart.ylim -0.5 0.5
+  Chart.ylim -0.2 0.2
   Chart.yaxis "Dilation (normalized)"
   Chart.lines "pupils" pupils "alpha=0.5"
 
   Chart.subplot 3 1
   Chart.xlim (float start) (float duration)
-  Chart.ylim 0.0 1.1
-  Chart.yaxis "Progress (normalized)"
+  Chart.ylim 0.0 18.0
+  Chart.yaxis "Progress"
   Chart.lines "progress" progress "width=2"
 
   Chart.subplot 3 1
