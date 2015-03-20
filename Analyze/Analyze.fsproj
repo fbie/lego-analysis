@@ -12,6 +12,7 @@
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\Debug</OutputPath>
     <ErrorReport>prompt</ErrorReport>
+    <Commandlineparameters>/Users/fbie/Code/gaze/lego-owncloud/htf-5-1-logs/kbh-2015-week-9/clean/gibi-session-2015-02-27-11-44-48-006464-1.csv</Commandlineparameters>
     <Externalconsole>true</Externalconsole>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">

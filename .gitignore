@@ -1,4 +1,6 @@
 *.pyc
 *~
 bin
+obj
 *.exe
+*.userprefs
