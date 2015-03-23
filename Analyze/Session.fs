@@ -5,6 +5,39 @@ open Analyze.Time
 open Analyze.Raw
 open Analyze.Waves
 
+module private Util =
+  (* Find median point in time between two neighboring events. *)
+  let center (a: (float<_> * _) seq) =
+    a
+    |> Seq.pairwise
+    |> Seq.map (fun (x, y) -> fst x + (fst y - fst x) / 2.0)
+
+module private Progress =
+  let private asFloat =
+    function
+      | Next (a, b)
+      | Previous (a, b) -> if b = 0 then float a else float a - 1.0 + (float b) / 10.0
+      | _ -> failwith "Cannot compute steps as float for non-step event."
+
+  let steps a =
+    a
+    |> Seq.filter (fun x ->
+                   match snd x with
+                   | Next _
+                   | Previous _ -> true
+                   | _ -> false)
+
+  let prog a =
+    a
+    |> steps
+    |> (fun s -> seq { yield Seq.head s; yield! s; yield Seq.last s })
+    |> Seq.pairwise
+    |> Seq.collect (fun (x, y) ->
+                    let s = y |> snd |> asFloat
+                    seq { yield (fst x, s); yield (fst y, s) })
+
+let progress = Progress.prog
+
 module private Attention =
   (* Add reversed fst s to snd s. *)
   let private cat s =
@@ -40,33 +73,10 @@ module private Attention =
                             | t, false -> 0.0<s>)
                 |> Seq.sum)
 
-let attention = Attention.attention
-
-module private Progress =
-  let private asFloat =
-    function
-      | Next (a, b)
-      | Previous (a, b) -> if b = 0 then float a else float a - 1.0 + (float b) / 10.0
-      | _ -> failwith "Cannot compute steps as float for non-step event."
-
-  let steps a =
-    a
-    |> Seq.filter (fun x ->
-                   match snd x with
-                   | Next _
-                   | Previous _ -> true
-                   | _ -> false)
-
-  let prog a =
-    a
-    |> steps
-    |> (fun s -> seq { yield Seq.head s; yield! s; yield Seq.last s })
-    |> Seq.pairwise
-    |> Seq.collect (fun (x, y) ->
-                    let s = y |> snd |> asFloat
-                    seq { yield (fst x, s); yield (fst y, s) })
-
-let progress = Progress.prog
+let attention a =
+  let s = a |> Progress.steps |> Util.center
+  let t = Attention.attention a
+  Seq.zip s t
 
 let normalize (l: seq<'a * float>) =
   let _, m = l |> Seq.maxBy (fun (_, y) -> y)

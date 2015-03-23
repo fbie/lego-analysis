@@ -1,6 +1,7 @@
 module Analyze.Main
 
-open Analyze
+open Analyze.Chart
+open Analyze.Time
 
 let analyze (file: string) =
   let raw = file.Replace(".csv", "-raw.csv") |> Raw.parse
@@ -10,9 +11,10 @@ let analyze (file: string) =
   let duration = entries |> Seq.last |> fst
 
   let trunc f =
-    Seq.choose (fun x -> let t = f x in if t >= start || t <= duration then Some x else None)
+    Seq.filter (fun x -> let t = f x in t >= start || t <= duration)
 
-  let progress = entries |> Session.progress
+  let progress = entries
+                 |> Session.progress
   let pupils = raw
                |> trunc (fun x -> x.aT - x.startT)
                |> Session.pupilSize
@@ -31,11 +33,10 @@ let analyze (file: string) =
 
   Chart.subplot 3 1
   Chart.xlim (float start) (float duration)
-  Chart.ylim 0.0 1.0
   Chart.xaxis "Time (s)"
-  Chart.points "attention" ((Seq.toList >> Session.attention >> (Session.toPoints 0.5) >> trunc fst) entries) ""
-  Chart.points "zoom" ((Session.zoom >> (Session.toPoints 0.3) >> trunc fst) entries) ""
-  Chart.points "rotate" ((Session.rotate >> (Session.toPoints 0.1) >> trunc fst) entries) ""
+  Chart.bars "attention" (entries |> Session.attention) 0.0<s> ""
+//  Chart.points "zoom" ((Session.zoom >> (Session.toPoints 0.3) >> trunc fst) entries) ""
+//  Chart.points "rotate" ((Session.rotate >> (Session.toPoints 0.1) >> trunc fst) entries) ""
 
   Chart.legend ""
   Chart.plotdone ""
