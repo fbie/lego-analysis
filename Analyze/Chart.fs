@@ -20,8 +20,8 @@ let points title data =
 let lines title data =
   chart "lines" title data
 
-let bars title (data: (float<'u> * float<'v>) seq) offs =
-  chart "bars" title (data |> Seq.map (fun (x, y) -> x + offs, y))
+let bars title data =
+  chart "bars" title data "width=2.0"
 
 let xaxis =
   printfn "cmd=xaxis;label=%s"

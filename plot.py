@@ -29,6 +29,7 @@ class Plotter:
     def __init__(self):
         self.sp_last = None
         self.sp_id = 1
+        self.sp_bar_offset = 0.0
         plt.figure(figsize=(16, 9), dpi=92)
 
     def points(self, cmd):
@@ -53,11 +54,13 @@ class Plotter:
 
     def bars(self, cmd):
         data = eval(cmd['data'])
-        plt.bar(left=[x for x,y in data],
+        plt.bar(left=[x + self.sp_bar_offset for x,y in data],
                 height=[y for x,y in data],
                 width=float(cmd['width']),
                 label=cmd['label'],
-                color=JUSTCOLORS.pop())
+                color=JUSTCOLORS.pop(),
+                linewidth=0)
+        self.sp_bar_offset += float(cmd['width'])
 
     def xaxis(self, cmd):
         plt.xlabel(cmd['label'])
@@ -74,6 +77,7 @@ class Plotter:
     def subplot(self, cmd):
         self.sp_last = plt.subplot(int(cmd['width']), int(cmd['height']), self.sp_id)
         self.sp_id += 1
+        self.sp_bar_offset = 0.0
 
     def legend(self, cmd):
         if self.sp_last:

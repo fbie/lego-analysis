@@ -34,7 +34,7 @@ let analyze (file: string) =
   Chart.subplot 3 1
   Chart.xlim (float start) (float duration)
   Chart.xaxis "Time (s)"
-  Chart.bars "attention" (entries |> Session.attention) 0.0<s> ""
+  Chart.bars "attention" (entries |> Session.attention)
 //  Chart.points "zoom" ((Session.zoom >> (Session.toPoints 0.3) >> trunc fst) entries) ""
 //  Chart.points "rotate" ((Session.rotate >> (Session.toPoints 0.1) >> trunc fst) entries) ""
 
