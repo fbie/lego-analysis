@@ -11,6 +11,7 @@ MARKERS = ('.', ',', 'o', 'v', '^', '<', '>', 's', '*', '+')
 
 LINECOLORS = list(c + l for l in LINES for c in COLORS)[::-1]
 MARKERCOLORS = list(c + m for m in MARKERS for c in COLORS)[::-1]
+JUSTCOLORS = list(COLORS)[::-1]
 
 DEFAULT = { 'label': None, 'alpha': 1.0, 'width': 1, 'height': 1 }
 
@@ -49,6 +50,14 @@ class Plotter:
                  alpha=float(cmd['alpha']),
                  linewidth=int(cmd['width']),
                  antialiased=True)
+
+    def bars(self, cmd):
+        data = eval(cmd['data'])
+        plt.bar(left=[x for x,y in data],
+                height=[y for x,y in data],
+                width=float(cmd['width']),
+                label=cmd['label'],
+                color=JUSTCOLORS.pop())
 
     def xaxis(self, cmd):
         plt.xlabel(cmd['label'])
