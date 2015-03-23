@@ -5,24 +5,68 @@ open Analyze.Time
 open Analyze.Raw
 open Analyze.Waves
 
-let private toFloat s ss =
-  if ss = 0 then float s else float s - 1.0 + (float ss) / 10.0
+module private Attention =
+  (* Add reversed fst s to snd s. *)
+  let private cat s =
+    List.rev (fst s) :: snd s
 
-let rec progress =
-  function
-  | (ts, Next (s, ss)) :: t | (ts, Previous (s, ss)) :: t -> (ts, toFloat s ss) :: progress t
-  | [] -> []
-  | _ :: t -> progress t
+  (* Construct a new tuple and propagate last state. *)
+  let private con t s =
+    let l = s |> fst |> List.head |> snd
+    ([(t, l)], cat ((t , l) :: fst s, snd s))
 
-let progress2 aSeq =
-  let rec steps last elems =
-    match elems with
-    | (ts: float<s>, Next (s, ss)) :: t | (ts, Previous (s, ss)) :: t ->
-      let n = (toFloat s ss)
-      (ts, last) :: (ts, n) :: steps n t
-    | [] -> []
-    | _ :: t -> steps last t
-  steps 0.0 aSeq |> List.toSeq
+  (* Find all tracking lost events and compute a list of tracking events per step. *)
+  let private group a =
+    a
+    |> Seq.fold (fun s t ->
+                 match t with
+                 | t', Tracking b -> (t', b) :: (fst s), snd s
+                 | t', Next _
+                 | t', Previous _ -> con t' s
+                 | _ -> s) ([], [])
+    |> cat
+    |> List.rev
+    |> Seq.ofList
+
+  (* Compute attention time per step. *)
+  let attention a =
+    group a
+    |> Seq.map (fun x ->
+                x
+                |> Seq.pairwise
+                |> Seq.map (fun (y, z) ->
+                            match y with
+                            | t, true -> fst z - t
+                            | t, false -> 0.0<s>)
+                |> Seq.sum)
+
+let attention = Attention.attention
+
+module private Progress =
+  let private asFloat =
+    function
+      | Next (a, b)
+      | Previous (a, b) -> float a - 1.0 + (float b) / 10.0
+      | _ -> failwith "Cannot compute steps as float for non-step event."
+
+  let steps a =
+    a
+    |> Seq.filter (fun x ->
+                   match snd x with
+                   | Next _
+                   | Previous _ -> true
+                   | _ -> false)
+
+
+  let prog a =
+    a
+    |> steps
+    |> Seq.pairwise
+    |> Seq.collect (fun (x, y) ->
+                    let s = y |> snd |> asFloat
+                    seq { yield (fst x, s); yield (fst y, s) })
+
+let progress = Progress.prog
 
 let normalize (l: seq<'a * float>) =
   let _, m = l |> Seq.maxBy (fun (_, y) -> y)
@@ -39,22 +83,6 @@ let rotate aSeq =
 
 let toPoints h aSeq =
   aSeq |> Seq.map (fun e -> (e, h))
-
-let attention actions =
-  Seq.delay (fun () ->
-             let rec intervals last actions =
-               match actions with
-               | (ts, Tracking b) :: t ->
-                 match b with
-                 | true -> intervals ts t
-                 | false -> seq { for p in int last .. int ts -> secs (float p) } :: intervals 0.0<s> t
-               | (ts, a) :: [] -> if last <> 0.0<s> then seq { for p in int last .. int ts -> secs (float p) } :: [] else []
-               | _ :: t -> intervals last t
-               | [] -> []
-             actions
-             |> intervals 0.0<s>
-             |> List.fold (fun s t -> s @ (t |> Seq.toList)) []
-             |> List.toSeq)
 
 let derivate aSeq =
   aSeq |> Seq.pairwise |> Seq.map (fun (n, m) -> fst m, snd m - snd n)

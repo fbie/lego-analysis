@@ -12,9 +12,7 @@ let analyze (file: string) =
   let trunc f =
     Seq.choose (fun x -> let t = f x in if t >= start || t <= duration then Some x else None)
 
-  let progress = entries
-                 |> Seq.toList
-                 |> Session.progress2
+  let progress = entries |> Session.progress
   let pupils = raw
                |> trunc (fun x -> x.aT - x.startT)
                |> Session.pupilSize
