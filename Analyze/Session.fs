@@ -60,6 +60,10 @@ module private Progress =
 let progress = Progress.prog
 
 module private Events =
+  let private aT = 0.8<s> (* Delay between look-away to logging. *)
+  let private rT = 4.0<s> (* A rotation of 360°. *)
+  let private zT = 0.2<s> (* For a change of 11 * change. *)
+
   (* Add reversed fst s to snd s. *)
   let private cat s =
     List.rev (fst s) :: snd s
@@ -88,15 +92,18 @@ module private Events =
     |> Seq.map (fun x ->
                 x
                 |> Seq.pairwise
-                |> Seq.map (fun (y, z) ->
-                            match y with
-                            | t, true -> fst z - t
-                            | t, false -> 0.0<s>)
+                |> Seq.map (fun x ->
+                            match x with
+                            | ((t, true), (s, false))
+                            | ((t, true), (s, true)) -> s - t
+                            | _ -> -aT)
                 |> Seq.sum)
 
 let attention a =
-  let s = a |> Progress.steps |> Util.center
+  let s = a |> Progress.steps
+            |> Util.center
   let t = a |> Events.attention
+            |> Seq.skip 1 (* Skip one to align with steps *)
   Seq.zip s t
 
 let normalize (l: seq<'a * float>) =
@@ -107,10 +114,16 @@ let private timestamps f =
   Seq.choose (fun (t, a) -> if f a then Some t else None)
 
 let zoom aSeq =
-  aSeq |> timestamps (fun a -> match a with | Zoom _ -> true | _ -> false)
+  aSeq |> timestamps (fun a ->
+                      match a with
+                      | Zoom _ -> true
+                      | _ -> false)
 
 let rotate aSeq =
-  aSeq |> timestamps (fun a -> match a with | Rotation _ -> true | _ -> false)
+  aSeq |> timestamps (fun a ->
+                      match a with
+                      | Rotation _ -> true
+                      | _ -> false)
 
 let interpolate aSeq =
   Seq.delay (fun () ->
