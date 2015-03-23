@@ -12,6 +12,27 @@ module private Util =
     |> Seq.pairwise
     |> Seq.map (fun (x, y) -> fst x + (fst y - fst x) / 2.0)
 
+  let std aSeq =
+    if not (Seq.isEmpty aSeq) then
+      let avg = Seq.average aSeq
+      (Seq.fold (fun s x -> s + (x - avg) ** 2.0) 0.0 aSeq |> sqrt) / (Seq.length >> float) aSeq
+    else
+      0.0
+
+  let sstd aSeq =
+    if Seq.length aSeq > 1 then
+      let avg = Seq.average aSeq
+      (Seq.fold (fun s x -> s + (x - avg) ** 2.0) 0.0 aSeq |> sqrt) / ((Seq.length >> float) aSeq - 1.0)
+    else
+      0.0
+
+  let sem aSeq =
+    let n = Seq.length aSeq
+    if n > 0 then
+      sstd aSeq / float n
+    else
+      0.0
+
 module private Progress =
   let private asFloat =
     function
@@ -38,7 +59,7 @@ module private Progress =
 
 let progress = Progress.prog
 
-module private Attention =
+module private Events =
   (* Add reversed fst s to snd s. *)
   let private cat s =
     List.rev (fst s) :: snd s
@@ -75,7 +96,7 @@ module private Attention =
 
 let attention a =
   let s = a |> Progress.steps |> Util.center
-  let t = Attention.attention a
+  let t = a |> Events.attention
   Seq.zip s t
 
 let normalize (l: seq<'a * float>) =
@@ -91,18 +112,6 @@ let zoom aSeq =
 let rotate aSeq =
   aSeq |> timestamps (fun a -> match a with | Rotation _ -> true | _ -> false)
 
-let toPoints h aSeq =
-  aSeq |> Seq.map (fun e -> (e, h))
-
-let derivate aSeq =
-  aSeq |> Seq.pairwise |> Seq.map (fun (n, m) -> fst m, snd m - snd n)
-
-let assertTemporalOrdering s =
-  s
-  |> Seq.pairwise
-  |> Seq.iter (fun (n, m) -> if not (fst n < fst m) then failwith "Temporal ordering violated")
-  s
-
 let interpolate aSeq =
   Seq.delay (fun () ->
              aSeq
@@ -111,29 +120,8 @@ let interpolate aSeq =
              |> List.rev
              |> List.toSeq)
 
-let std aSeq =
-  if not (Seq.isEmpty aSeq) then
-    let avg = Seq.average aSeq
-    (Seq.fold (fun s x -> s + (x - avg) ** 2.0) 0.0 aSeq |> sqrt) / (Seq.length >> float) aSeq
-  else
-    0.0
-
-let sstd aSeq =
-  if Seq.length aSeq > 1 then
-    let avg = Seq.average aSeq
-    (Seq.fold (fun s x -> s + (x - avg) ** 2.0) 0.0 aSeq |> sqrt) / ((Seq.length >> float) aSeq - 1.0)
-  else
-    0.0
-
-let sem aSeq =
-  let n = Seq.length aSeq
-  if n > 0 then
-    sstd aSeq / float n
-  else
-    0.0
-
 let filterOutliers aSeq =
-  let lim = 2.0 * (aSeq |> Seq.map (fun x -> snd x) |> std)
+  let lim = 2.0 * (aSeq |> Seq.map (fun x -> snd x) |> Util.std)
   aSeq |> Seq.filter (fun x -> snd x >= lim)
 
 let applyR f aSeq =
@@ -145,5 +133,5 @@ let pupilSize aSeq =
   |> interpolate
   |> filterOutliers
   |> Seq.toArray
-  |> applyR Waves.d7
+  |> applyR Waves.d16
   |> normalize
