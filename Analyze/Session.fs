@@ -46,7 +46,7 @@ module private Progress =
   let private asFloat =
     function
       | Next (a, b)
-      | Previous (a, b) -> float a - 1.0 + (float b) / 10.0
+      | Previous (a, b) -> if b = 0 then float a else float a - 1.0 + (float b) / 10.0
       | _ -> failwith "Cannot compute steps as float for non-step event."
 
   let steps a =
@@ -57,10 +57,10 @@ module private Progress =
                    | Previous _ -> true
                    | _ -> false)
 
-
   let prog a =
     a
     |> steps
+    |> (fun s -> seq { yield Seq.head s; yield! s; yield Seq.last s })
     |> Seq.pairwise
     |> Seq.collect (fun (x, y) ->
                     let s = y |> snd |> asFloat
