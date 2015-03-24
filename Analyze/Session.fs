@@ -102,25 +102,39 @@ module private Events =
                             | _ -> 0.0<s>)
                 |> Seq.sum)
 
-  let zoom a =
+  let private forPartitions a f =
     partition a
-    |> Seq.map (fun x ->
-                x
-                |> Seq.sumBy (fun x ->
+    |> Seq.map (fun s -> f s)
+
+  let nAttention a =
+    forPartitions a (Seq.sumBy (fun x ->
+                                match snd x with
+                                | Tracking _ -> 1
+                                | _ -> 0))
+  let zoom a =
+    forPartitions a (Seq.sumBy (fun x ->
                               match snd x with
                               | Zoom _ -> zT
                               | _ -> 0.0<s>))
 
+  let nZoom a =
+    forPartitions a (Seq.countBy (fun x ->
+                                  match snd x with
+                                  | Zoom _ -> 1
+                                  | _ -> 0))
   let rotate a =
-    partition a
-    |> Seq.map (fun s -> s
-                         |> Seq.choose (fun x ->
-                                        match snd x with
-                                        | Rotation d -> Some d
-                                        | _ -> None))
+    forPartitions a (Seq.choose (fun x ->
+                                 match snd x with
+                                 | Rotation d -> Some d
+                                 | _ -> None))
     |> Seq.map (fun s -> s
                          |> Seq.pairwise
                          |> Seq.sumBy (fun (x, y) -> abs (x - y) * rT / 360.0))
+  let nRotate a =
+    forPartitions a (Seq.sumBy (fun x ->
+                                match snd x with
+                                | Rotation _ -> 1
+                                | _ -> 0))
 
 let attention a =
   Events.zip a Events.attention
