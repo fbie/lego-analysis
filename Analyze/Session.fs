@@ -6,12 +6,6 @@ open Analyze.Raw
 open Analyze.Waves
 
 module private Util =
-  (* Find median point in time between two neighboring events. *)
-  let center (a: (float<_> * _) seq) =
-    a
-    |> Seq.pairwise
-    |> Seq.map (fun (x, y) -> fst x + (fst y - fst x) / 2.0)
-
   let std aSeq =
     if not (Seq.isEmpty aSeq) then
       let avg = Seq.average aSeq
@@ -80,7 +74,7 @@ module private Events =
   let zip a f =
     let s = a
             |> Progress.steps
-            |> Util.center
+            |> Seq.map (fun (x, _) -> x)
     let t = a
             |> f
             |> Seq.skip 1 (* Skip one to align with steps *)

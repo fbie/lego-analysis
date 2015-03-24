@@ -21,7 +21,7 @@ let lines title data =
   chart "lines" title data
 
 let bars title data =
-  chart "bars" title data "width=2.0"
+  chart "bars" title data "width=5.0"
 
 let xaxis =
   printfn "cmd=xaxis;label=%s"
