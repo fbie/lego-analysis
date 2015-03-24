@@ -89,6 +89,8 @@ module private Events =
   (* Compute attention time per step. *)
   let attention a =
     partition a
+    |> Seq.pairwise
+    |> Seq.map (fun (x, y) -> seq { yield! x; yield y |> Seq.head })
     |> Seq.map (fun x ->
                 x
                 |> Seq.filter (fun x ->
@@ -102,6 +104,7 @@ module private Events =
                             match x with
                             | ((t, Tracking b), (s, _)) -> if b then s - t else -aT
                             | ((t, _), (s, Tracking b)) when not b -> s - t
+                            | ((t, (Next _ | Previous _)), (s, (Next _ | Previous _))) -> s - t
                             | _ -> 0.0<s>)
                 |> Seq.sum)
 
@@ -114,27 +117,27 @@ module private Events =
                               | Zoom _ -> zT
                               | _ -> 0.0<s>))
 
+  let rotate a =
+    partition a
+    |> Seq.map (fun x ->
+                x
+                |> Seq.sumBy (fun x ->
+                              match snd x with
+                              | Rotation d -> rT
+                              | _ -> 0.0<s>))
+
 let attention a =
   Events.zip a Events.attention
+
+let zoom a =
+  Events.zip a Events.zoom
+
+let rotate a =
+  Events.zip a Events.rotate
 
 let normalize (l: seq<'a * float>) =
   let _, m = l |> Seq.maxBy (fun (_, y) -> y)
   l |> Seq.map (fun (x, y) -> x, y / m)
-
-let private timestamps f =
-  Seq.choose (fun (t, a) -> if f a then Some t else None)
-
-let zoom aSeq =
-  aSeq |> timestamps (fun a ->
-                      match a with
-                      | Zoom _ -> true
-                      | _ -> false)
-
-let rotate aSeq =
-  aSeq |> timestamps (fun a ->
-                      match a with
-                      | Rotation _ -> true
-                      | _ -> false)
 
 let interpolate aSeq =
   Seq.delay (fun () ->

@@ -36,7 +36,7 @@ let analyze (file: string) =
   Chart.yaxis "Time spent (s)"
   Chart.xaxis "Time (s)"
   Chart.bars "attention" (entries |> Session.attention)
-//  Chart.points "zoom" ((Session.zoom >> (Session.toPoints 0.3) >> trunc fst) entries) ""
+  Chart.bars "zoom" (entries |> Session.zoom)
 //  Chart.points "rotate" ((Session.rotate >> (Session.toPoints 0.1) >> trunc fst) entries) ""
 
   Chart.legend ""
