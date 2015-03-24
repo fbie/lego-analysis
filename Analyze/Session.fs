@@ -62,49 +62,60 @@ let progress = Progress.prog
 module private Events =
   let private aT = 0.8<s> (* Delay between look-away to logging. *)
   let private rT = 4.0<s> (* A rotation of 360°. *)
-  let private zT = 0.2<s> (* For a change of 11 * change. *)
+  let private zT = 0.2<s> (* For a change of 11 x change. *)
 
-  (* Add reversed fst s to snd s. *)
-  let private cat s =
-    List.rev (fst s) :: snd s
-
-  (* Construct a new tuple and propagate last state. *)
-  let private con t s =
-    let l = s |> fst |> List.head |> snd
-    ([(t, l)], cat ((t , l) :: fst s, snd s))
-
-  (* Find all tracking lost events and compute a list of tracking events per step. *)
-  let private group a =
+  (* Partition event timeline by steps. *)
+  let partition a =
+    let step =
+      function
+        | Next _
+        | Previous _ -> true
+        | _ -> false
     a
-    |> Seq.fold (fun s t ->
-                 match t with
-                 | t', Tracking b -> (t', b) :: (fst s), snd s
-                 | t', Next _
-                 | t', Previous _ -> con t' s
-                 | _ -> s) ([], [])
-    |> cat
-    |> List.rev
-    |> Seq.ofList
+    |> Seq.scan (fun (s, _) t -> if step (snd t) then (s + 1, t) else (s, t)) (0, a |> Seq.head)
+    |> Seq.groupBy (fun (x, _) -> x)
+    |> Seq.map (fun (_, s) -> s |> Seq.map (fun (_, x) -> x))
+
+  (* Zip some events with steps. *)
+  let zip a f =
+    let s = a
+            |> Progress.steps
+            |> Util.center
+    let t = a
+            |> f
+            |> Seq.skip 1 (* Skip one to align with steps *)
+    Seq.zip s t
 
   (* Compute attention time per step. *)
   let attention a =
-    group a
+    partition a
     |> Seq.map (fun x ->
                 x
+                |> Seq.filter (fun x ->
+                               match snd x with
+                               | Tracking _
+                               | Next _
+                               | Previous _ -> true
+                               | _ -> false)
                 |> Seq.pairwise
                 |> Seq.map (fun x ->
                             match x with
-                            | ((t, true), (s, false))
-                            | ((t, true), (s, true)) -> s - t
-                            | _ -> -aT)
+                            | ((t, Tracking b), (s, _)) -> if b then s - t else -aT
+                            | ((t, _), (s, Tracking b)) when not b -> s - t
+                            | _ -> 0.0<s>)
                 |> Seq.sum)
 
+  let zoom a =
+    partition a
+    |> Seq.map (fun x ->
+                x
+                |> Seq.sumBy (fun x ->
+                              match snd x with
+                              | Zoom _ -> zT
+                              | _ -> 0.0<s>))
+
 let attention a =
-  let s = a |> Progress.steps
-            |> Util.center
-  let t = a |> Events.attention
-            |> Seq.skip 1 (* Skip one to align with steps *)
-  Seq.zip s t
+  Events.zip a Events.attention
 
 let normalize (l: seq<'a * float>) =
   let _, m = l |> Seq.maxBy (fun (_, y) -> y)
