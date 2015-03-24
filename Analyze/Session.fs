@@ -119,12 +119,14 @@ module private Events =
 
   let rotate a =
     partition a
-    |> Seq.map (fun x ->
-                x
-                |> Seq.sumBy (fun x ->
-                              match snd x with
-                              | Rotation d -> rT
-                              | _ -> 0.0<s>))
+    |> Seq.map (fun s -> s
+                         |> Seq.choose (fun x ->
+                                        match snd x with
+                                        | Rotation d -> Some d
+                                        | _ -> None))
+    |> Seq.map (fun s -> s
+                         |> Seq.pairwise
+                         |> Seq.sumBy (fun (x, y) -> abs (x - y) * rT / 360.0))
 
 let attention a =
   Events.zip a Events.attention

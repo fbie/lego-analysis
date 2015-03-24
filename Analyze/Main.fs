@@ -37,7 +37,7 @@ let analyze (file: string) =
   Chart.xaxis "Time (s)"
   Chart.bars "attention" (entries |> Session.attention)
   Chart.bars "zoom" (entries |> Session.zoom)
-//  Chart.points "rotate" ((Session.rotate >> (Session.toPoints 0.1) >> trunc fst) entries) ""
+  Chart.bars "rotate" (entries |> Session.rotate)
 
   Chart.legend ""
   Chart.plotdone ""
