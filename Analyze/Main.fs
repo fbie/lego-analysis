@@ -19,27 +19,36 @@ let analyze (file: string) =
                |> trunc (fun x -> x.aT - x.startT)
                |> Session.pupilSize
 
-  Chart.subplot 3 1
+  Chart.subplot 4 1
   Chart.xlim (float start) (float duration)
   Chart.ylim -0.2 0.2
   Chart.yaxis "Dilation (normalized)"
   Chart.lines "pupils" pupils "alpha=0.5"
 
-  Chart.subplot 3 1
+  Chart.subplot 4 1
   Chart.xlim (float start) (float duration)
   Chart.ylim 0.0 18.0
   Chart.yaxis "Progress"
   Chart.lines "progress" progress "width=2"
 
-  Chart.subplot 3 1
+  Chart.subplot 4 1
   Chart.xlim (float start) (float duration)
   Chart.yaxis "Time spent (s)"
   Chart.xaxis "Time (s)"
   Chart.bars "attention" (entries |> Session.attention)
   Chart.bars "zoom" (entries |> Session.zoom)
   Chart.bars "rotate" (entries |> Session.rotate)
-
   Chart.legend ""
+
+  Chart.subplot 4 1
+  Chart.xlim (float start) (float duration)
+  Chart.yaxis "# Events"
+  Chart.xaxis "Time (s)"
+  Chart.bars "attention" (entries |> Session.nAttention)
+  Chart.bars "zoom" (entries |> Session.nZoom)
+  Chart.bars "rotate" (entries |> Session.nRotate)
+  Chart.legend ""
+
   Chart.plotdone ""
 
 [<EntryPoint>]

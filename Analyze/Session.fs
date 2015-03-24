@@ -109,8 +109,8 @@ module private Events =
   let nAttention a =
     forPartitions a (Seq.sumBy (fun x ->
                                 match snd x with
-                                | Tracking _ -> 1
-                                | _ -> 0))
+                                | Tracking _ -> 1.0
+                                | _ -> 0.0))
   let zoom a =
     forPartitions a (Seq.sumBy (fun x ->
                               match snd x with
@@ -118,10 +118,10 @@ module private Events =
                               | _ -> 0.0<s>))
 
   let nZoom a =
-    forPartitions a (Seq.countBy (fun x ->
+    forPartitions a (Seq.sumBy (fun x ->
                                   match snd x with
-                                  | Zoom _ -> 1
-                                  | _ -> 0))
+                                  | Zoom _ -> 1.0
+                                  | _ -> 0.0))
   let rotate a =
     forPartitions a (Seq.choose (fun x ->
                                  match snd x with
@@ -133,17 +133,26 @@ module private Events =
   let nRotate a =
     forPartitions a (Seq.sumBy (fun x ->
                                 match snd x with
-                                | Rotation _ -> 1
-                                | _ -> 0))
+                                | Rotation _ -> 1.0
+                                | _ -> 0.0))
 
 let attention a =
   Events.zip a Events.attention
 
+let nAttention a =
+  Events.zip a Events.nAttention
+
 let zoom a =
   Events.zip a Events.zoom
 
+let nZoom a =
+  Events.zip a Events.nZoom
+
 let rotate a =
   Events.zip a Events.rotate
+
+let nRotate a =
+  Events.zip a Events.nRotate
 
 let normalize (l: seq<'a * float>) =
   let _, m = l |> Seq.maxBy (fun (_, y) -> y)
