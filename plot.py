@@ -9,11 +9,21 @@ COLORS = ('b', 'g', 'r', 'c', 'm', 'y', 'k')
 LINES = ('-', '--', '-.', ':')
 MARKERS = ('.', ',', 'o', 'v', '^', '<', '>', 's', '*', '+')
 
-LINECOLORS = list(c + l for l in LINES for c in COLORS)[::-1]
-MARKERCOLORS = list(c + m for m in MARKERS for c in COLORS)[::-1]
-JUSTCOLORS = list(COLORS)[::-1]
-
 DEFAULT = { 'label': None, 'alpha': 1.0, 'width': 1, 'height': 1 }
+
+class circularlist:
+    def __init__(self, l):
+        self._l = l
+        self._i = 0
+
+    def next(self):
+        v = self._l[self._i]
+        self._i = (self._i + 1) % len(self._l)
+        return v
+
+LINECOLORS = circularlist(list(c + l for l in LINES for c in COLORS))
+MARKERCOLORS = circularlist(list(c + m for m in MARKERS for c in COLORS))
+JUSTCOLORS = circularlist(COLORS)
 
 class superdefaultdict(defaultdict):
     def __init__(self, vals):
@@ -34,7 +44,7 @@ class Plotter:
 
     def points(self, cmd):
         data = eval(cmd['data'])
-        s = MARKERCOLORS.pop()
+        s = MARKERCOLORS.next()
         plt.scatter([x for x,y in data],
                     [y for x,y in data],
                     c=s[0], marker=s[1],
@@ -46,7 +56,7 @@ class Plotter:
         data = eval(cmd['data'])
         plt.plot([x for x,y in data],
                  [y for x,y in data],
-                 LINECOLORS.pop(),
+                 LINECOLORS.next(),
                  label=cmd['label'],
                  alpha=float(cmd['alpha']),
                  linewidth=int(cmd['width']),
@@ -58,7 +68,7 @@ class Plotter:
                 height=[y for x,y in data],
                 width=float(cmd['width']),
                 label=cmd['label'],
-                color=JUSTCOLORS.pop(),
+                color=JUSTCOLORS.next(),
                 linewidth=0)
         self.sp_bar_offset += float(cmd['width'])
 
