@@ -72,9 +72,11 @@ module private Events =
 
   (* Zip some events with steps. *)
   let zip a f =
-    let s = a
-            |> Progress.steps
-            |> Seq.map (fun (x, _) -> x)
+    let s = a |> Seq.choose (fun (t, x) ->
+                             match x with
+                             | Next _
+                             | Previous _ -> Some t
+                             | _ -> None)
     let t = a
             |> f
             |> Seq.skip 1 (* Skip one to align with steps *)
@@ -136,11 +138,26 @@ module private Events =
                                 | Rotation _ -> 1.0
                                 | _ -> 0.0))
 
+  let pTime a e =
+    let s = e |> Seq.choose (fun x ->
+                             match snd x with
+                             | Next _
+                             | Previous _ -> Some x
+                             | _ -> None)
+              |> Seq.pairwise
+              |> Seq.map (fun (x, y) -> fst y - fst x)
+    s
+    |> Seq.map2 (fun (x, y) z -> (x, y / z)) a
+    |> Seq.truncate (Seq.length s)
+
 let attention a =
   Events.zip a Events.attention
 
 let nAttention a =
   Events.zip a Events.nAttention
+
+let tAttention a =
+  Events.pTime (attention a) a
 
 let zoom a =
   Events.zip a Events.zoom
@@ -148,11 +165,17 @@ let zoom a =
 let nZoom a =
   Events.zip a Events.nZoom
 
+let tZoom a =
+  Events.pTime (zoom a) a
+
 let rotate a =
   Events.zip a Events.rotate
 
 let nRotate a =
   Events.zip a Events.nRotate
+
+let tRotate a =
+  Events.pTime (zoom a) a
 
 let normalize (l: seq<'a * float>) =
   let _, m = l |> Seq.maxBy (fun (_, y) -> y)
