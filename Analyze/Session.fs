@@ -29,7 +29,7 @@ module private Util =
       0.0
 
 module private Progress =
-  let private asFloat =
+  let asFloat =
     function
       | Next (a, b)
       | Previous (a, b) -> if b = 0 then float a else float a - 1.0 + (float b) / 10.0
@@ -178,30 +178,40 @@ let nRotate a =
 let tRotate a =
   Events.pTime (zoom a) a
 
-let normalize (l: seq<'a * float>) =
-  let _, m = l |> Seq.maxBy (fun (_, y) -> y)
-  l |> Seq.map (fun (x, y) -> x, y / m)
+module Dilation =
+  let private normalize (l: seq<'a * float>) =
+    let _, m = l |> Seq.maxBy (fun (_, y) -> y)
+    l |> Seq.map (fun (x, y) -> x, y / m)
 
-let interpolate aSeq =
-  Seq.delay (fun () ->
-             aSeq
-             |> Seq.fold (fun l t ->
-                          (if not l.IsEmpty && snd t = 0.0 then (fst t, snd l.Head) else t) :: l) []
-             |> List.rev
-             |> List.toSeq)
+  let private interpolate a =
+    Seq.delay (fun () ->
+               a
+               |> Seq.fold (fun l t ->
+                            (if not l.IsEmpty && snd t = 0.0 then (fst t, snd l.Head) else t) :: l) []
+               |> List.rev
+               |> List.toSeq)
 
-let filterOutliers aSeq =
-  let lim = 2.0 * (aSeq |> Seq.map (fun x -> snd x) |> Util.std)
-  aSeq |> Seq.filter (fun x -> snd x >= lim)
+  let private filterOutliers a =
+    let lim = 2.0 * (a |> Seq.map (fun x -> snd x) |> Util.std)
+    a |> Seq.filter (fun x -> snd x >= lim)
 
-let applyR f aSeq =
-  Seq.zip (aSeq |> Array.map (fun x -> fst x)) (aSeq |> Array.map (fun x -> snd x) |> f)
+  let private applyR f a =
+    Seq.zip (a |> Array.map (fun x -> fst x)) (a |> Array.map (fun x -> snd x) |> f)
 
-let pupilSize aSeq =
-  aSeq
-  |> Seq.map (fun (r: Raw) -> (r.aT - r.startT), (r.leftEye.pupilSize + r.rightEye.pupilSize) / 2.0)
-  |> interpolate
-  |> filterOutliers
-  |> Seq.toArray
-  |> applyR Waves.d16
-  |> normalize
+  let pupilSize a =
+    a
+    |> Seq.map (fun (r: Raw) -> (r.aT - r.startT), (r.leftEye.pupilSize + r.rightEye.pupilSize) / 2.0)
+    |> interpolate
+    |> filterOutliers
+    |> Seq.toArray
+    |> applyR Waves.d16
+    |> normalize
+
+let pupilSize a = Dilation.pupilSize a
+
+module Aggregate =
+  let perStep f a =
+    a
+    |> Events.partition
+    |> Seq.groupBy (fun x -> (Seq.head x) |> snd |> Progress.asFloat)
+    |> Seq.map (fun x -> f (snd x))
