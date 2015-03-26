@@ -1,8 +1,9 @@
 module Analyze.Session
 
-open Analyze.Action
 open Analyze.Time
-open Analyze.Raw
+open Analyze.Gaze
+open Analyze.Gaze.Events
+open Analyze.Gaze.Raw
 open Analyze.Waves
 
 module private Util =

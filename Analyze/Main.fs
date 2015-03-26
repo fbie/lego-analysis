@@ -1,11 +1,12 @@
 module Analyze.Main
 
 open Analyze.Chart
+open Analyze.Gaze
 open Analyze.Time
 
 let analyze (file: string) =
-  let raw = file.Replace(".csv", "-raw.csv") |> Raw.parse
-  let entries = file |> Action.parseFile
+  let raw = file.Replace(".csv", "-raw.csv") |> Gaze.Raw.parseFile
+  let entries = file |> Gaze.Events.parseFile
 
   let start = entries |> Seq.head |> fst
   let duration = entries |> Seq.last |> fst
