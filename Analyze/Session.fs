@@ -28,13 +28,24 @@ module private Util =
     else
       0.0
 
-module private Progress =
-  let asFloat =
+  let apply f g h a =
+    Seq.zip (a |> Seq.map (fun x -> g x)) (a |> Seq.map (fun x -> h x) |> f)
+
+  let applyR f a =
+    apply f fst snd a
+
+  let applyL f a =
+    apply f snd fst a |> Seq.map (fun x -> (snd x, fst x))
+
+  [<Measure>] type step
+
+  let asStep =
     function
       | Next (a, b)
-      | Previous (a, b) -> if b = 0 then float a else float a - 1.0 + (float b) / 10.0
+      | Previous (a, b) -> (if b = 0 then float a else float a - 1.0 + (float b) / 10.0) * 1.0<step>
       | _ -> failwith "Cannot compute steps as float for non-step event."
 
+module private Progress =
   let steps a =
     a
     |> Seq.filter (fun x ->
@@ -49,7 +60,7 @@ module private Progress =
     |> (fun s -> seq { yield Seq.head s; yield! s; yield Seq.last s })
     |> Seq.pairwise
     |> Seq.collect (fun (x, y) ->
-                    let s = y |> snd |> asFloat
+                    let s = y |> snd |> Util.asStep
                     seq { yield (fst x, s); yield (fst y, s) })
 
 let progress = Progress.prog
