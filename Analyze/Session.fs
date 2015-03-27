@@ -206,23 +206,73 @@ module Dilation =
     let lim = 2.0 * (a |> Seq.map (fun x -> snd x) |> Util.std)
     a |> Seq.filter (fun x -> snd x >= lim)
 
-  let private applyR f a =
-    Seq.zip (a |> Array.map (fun x -> fst x)) (a |> Array.map (fun x -> snd x) |> f)
-
   let pupilSize a =
     a
     |> Seq.map (fun (r: Raw) -> (r.aT - r.startT), (r.leftEye.pupilSize + r.rightEye.pupilSize) / 2.0)
     |> interpolate
     |> filterOutliers
-    |> Seq.toArray
-    |> applyR Waves.d16
+    |> Util.applyR (Array.ofSeq >> Waves.d16)
     |> normalize
 
 let pupilSize a = Dilation.pupilSize a
 
 module Aggregate =
-  let perStep f a =
+
+  let private stampToStep a t =
+    a |> Seq.skipWhile (fun x -> fst x <> t) |> Seq.head |> snd |> Util.asStep
+
+  let private mapStep b (a: (float<_> * float<_>) seq) =
+    a
+    |> Seq.map (fun x -> stampToStep b (fst x), snd x)
+    |> Seq.groupBy fst
+    |> Seq.map (fun x -> fst x, snd x |> Seq.sumBy (fun x -> snd x))
+
+  let private aggregate f a =
+    (f >> mapStep a) a
+
+  let attention a =
+    aggregate attention a
+
+  let nAttention a =
+    aggregate nAttention a
+
+  let tAttention a =
+    aggregate tAttention a
+
+  let zoom a =
+    aggregate zoom a
+
+  let nZoom a =
+    aggregate nZoom a
+
+  let tZoom a =
+    aggregate tZoom a
+
+  let rotate a =
+    aggregate rotate a
+
+  let nRotate a =
+    aggregate nRotate a
+
+  let tRotate a =
+    aggregate tRotate a
+
+  let duration a =
     a
     |> Events.partition
-    |> Seq.groupBy (fun x -> (Seq.head x) |> snd |> Progress.asFloat)
-    |> Seq.map (fun x -> f (snd x))
+    |> Seq.map (fun x -> (Seq.head >> fst) x, (Seq.last >> fst) x - (Seq.head >> fst) x)
+    |> mapStep a
+
+  let regressions a =
+    a
+    |> Seq.filter (fun x ->
+                   match snd x with
+                   | Next _ | Previous _ -> true
+                   | _ -> false)
+    |> Seq.pairwise
+    |> Seq.map (fun (x, y) ->
+                fst x,
+                match snd x, snd y with
+                | Next _, Previous _ -> 1.0
+                | _ -> 0.0)
+    |> mapStep a
