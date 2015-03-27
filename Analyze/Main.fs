@@ -4,63 +4,53 @@ open Analyze.Chart
 open Analyze.Gaze
 open Analyze.Time
 
-let analyze (file: string) =
-  let raw = file.Replace(".csv", "-raw.csv") |> Gaze.Raw.parseFile
-  let entries = file |> Gaze.Events.parseFile
+let plot (file: string) =
+  let s = Session.mkSession file
 
-  let start = entries |> Seq.head |> fst
-  let duration = entries |> Seq.last |> fst
-
-  let trunc f =
-    Seq.filter (fun x -> let t = f x in t >= start || t <= duration)
-
-  let progress = entries
-                 |> Session.progress
-  let pupils = raw
-               |> trunc (fun x -> x.aT - x.startT)
-               |> Session.pupilSize
+  let start = float (s.start.Force ())
+  let duration = float (s.duration.Force ())
 
   Chart.subplot 5 1
-  Chart.xlim (float start) (float duration)
+  Chart.xlim start duration
   Chart.ylim -0.2 0.2
   Chart.yaxis "Dilation (normalized)"
-  Chart.lines "pupils" pupils "alpha=0.5"
+  Chart.lines "pupils" (s.dilation.Force ()) "alpha=0.5"
 
   Chart.subplot 5 1
-  Chart.xlim (float start) (float duration)
+  Chart.xlim start duration
   Chart.ylim 0.0 18.0
   Chart.yaxis "Progress"
-  Chart.lines "progress" progress "width=2"
+  Chart.lines "progress" (s.progress.Force ()) "width=2"
 
   Chart.subplot 5 1
-  Chart.xlim (float start) (float duration)
+  Chart.xlim start duration
   Chart.yaxis "Time spent (s)"
   Chart.xaxis "Time (s)"
-  Chart.bars "attention" (entries |> Session.attention)
-  Chart.bars "zoom" (entries |> Session.zoom)
-  Chart.bars "rotate" (entries |> Session.rotate)
+  Chart.bars "attention" (s.attention.Force ())
+  Chart.bars "zoom" (s.zoom.Force ())
+  Chart.bars "rotate" (s.rotate.Force ())
   Chart.legend ""
 
   Chart.subplot 5 1
-  Chart.xlim (float start) (float duration)
+  Chart.xlim start duration
   Chart.yaxis "Time spent %"
   Chart.xaxis "Time (s)"
-  Chart.bars "attention" (entries |> Session.tAttention)
-  Chart.bars "zoom" (entries |> Session.tZoom)
-  Chart.bars "rotate" (entries |> Session.tRotate)
+  Chart.bars "attention" (s.tAttention.Force ())
+  Chart.bars "zoom" (s.tZoom.Force ())
+  Chart.bars "rotate" (s.tRotate.Force ())
   Chart.legend ""
 
   Chart.subplot 5 1
-  Chart.xlim (float start) (float duration)
+  Chart.xlim start duration
   Chart.yaxis "# Events"
   Chart.xaxis "Time (s)"
-  Chart.bars "attention" (entries |> Session.nAttention)
-  Chart.bars "zoom" (entries |> Session.nZoom)
-  Chart.bars "rotate" (entries |> Session.nRotate)
+  Chart.bars "attention" (s.nAttention.Force ())
+  Chart.bars "zoom" (s.nZoom.Force ())
+  Chart.bars "rotate" (s.nRotate.Force ())
   Chart.legend ""
 
   Chart.plotdone ""
 
 [<EntryPoint>]
 let main argv =
-  argv |> Array.iter analyze; 0
+  argv |> Array.iter plot; 0

@@ -227,8 +227,11 @@ module Aggregate =
     |> Seq.groupBy fst
     |> Seq.map (fun x -> fst x, snd x |> Seq.sumBy (fun x -> snd x))
 
-  let private aggregate f a =
+  let aggregate f a =
     (f >> mapStep a) a
+
+  let aggregateLazy a b =
+    mapStep a b
 
   let attention a =
     aggregate attention a
@@ -276,3 +279,48 @@ module Aggregate =
                 | Next _, Previous _ -> 1.0
                 | _ -> 0.0)
     |> mapStep a
+
+type Session =
+  { events: (float<s> * Action) seq; raw: Raw seq}
+  member private this.wrap f = lazy (f this.events)
+  member this.attention = this.wrap attention
+  member this.nAttention = this.wrap nAttention
+  member this.tAttention = this.wrap tAttention
+  member this.zoom = this.wrap zoom
+  member this.nZoom = this.wrap nZoom
+  member this.tZoom = this.wrap tZoom
+  member this.rotate = this.wrap rotate
+  member this.nRotate = this.wrap nRotate
+  member this.tRotate = this.wrap tRotate
+  member this.start = lazy (this.events |> Seq.head |> fst)
+  member this.duration = lazy (this.events |> Seq.last |> fst)
+  member this.dilation = lazy (
+    let s = this.start.Force ()
+    let d = this.duration.Force ()
+    this.raw
+    |> Seq.filter (fun x -> let t = x.aT - x.startT in t >= s || t <= d)
+    |> pupilSize)
+  member this.progress = lazy (progress this.events)
+
+let mkSession file =
+  let e = file |> Events.parseFile
+  let r = file.Replace(".csv", "-raw.csv") |> Raw.parseFile
+  { events = e; raw = r }
+
+type Aggregated =
+  { s: Session }
+  member private this.wrap (f: Lazy<'a>) = lazy (Aggregate.aggregateLazy this.s.events (f.Force()))
+  member this.attention = this.wrap this.s.attention
+  member this.nAttention = this.wrap this.s.nAttention
+  member this.tAttention = this.wrap this.s.tAttention
+  member this.zoom = this.wrap this.s.zoom
+  member this.nZoom = this.wrap this.s.nZoom
+  member this.tZoom = this.wrap this.s.tZoom
+  member this.rotate = this.wrap this.s.rotate
+  member this.nRotate = this.wrap this.s.nRotate
+  member this.tRotate = this.wrap this.s.tRotate
+  member this.duration = lazy (Aggregate.duration this.s.events)
+  member this.regression = lazy (Aggregate.regressions this.s.events)
+
+let mkAggregated s =
+    { s = s }
