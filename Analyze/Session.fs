@@ -336,3 +336,26 @@ type Aggregated =
 
 let mkAggregated file =
     { s = (mkSession file) }
+
+type Averaged =
+  { ags: Aggregated seq }
+  member private this.avg (f: Aggregated -> Lazy<('a * float<_>) seq>) =
+    this.ags
+    |> Seq.map (fun x -> (f x).Force ())
+    |> Seq.concat
+    |> Seq.groupBy fst
+    |> Seq.map (fun x -> fst x, snd x |> Seq.averageBy (fun x -> snd x))
+  member this.attention = this.avg (fun x -> x.attention)
+  member this.nAttention = this.avg (fun x -> x.nAttention)
+  member this.tAttention = this.avg (fun x -> x.tAttention)
+  member this.zoom = this.avg (fun x -> x.zoom)
+  member this.nZoom = this.avg (fun x -> x.nZoom)
+  member this.tZoom = this.avg (fun x -> x.tZoom)
+  member this.rotate = this.avg (fun x -> x.rotate)
+  member this.nRotate = this.avg (fun x -> x.nRotate)
+  member this.tRotate = this.avg (fun x -> x.tRotate)
+  member this.duration = this.avg (fun x -> x.duration)
+  member this.regression = this.avg (fun x -> x.regression)
+
+let mkAveraged files =
+  { ags = Seq.map (fun x -> mkAggregated x) files }

@@ -51,24 +51,36 @@ let plot (file: string) =
 
   Chart.plotdone ""
 
-let avg (f: 'a -> Lazy<_>) a =
-    a
-    |> Seq.map (fun x -> (f x).Force ())
-    |> Seq.concat
-    |> Seq.groupBy fst
-    |> Seq.map (fun x -> fst x, snd x |> Seq.averageBy (fun x -> snd x))
-
 let aggregate files =
-  let a =
-    files
-    |> Seq.map (fun x -> Session.mkAggregated x)
+  let avg = Session.mkAveraged files
 
   Chart.subplot 3 1
   Chart.xlim 0.0 18.0
   Chart.yaxis "Time (s)"
-  Chart.lines "duration" (avg (fun (x: Session.Aggregated) -> x.duration) a) ""
+  Chart.lines "duration" avg.duration ""
+  Chart.lines "attention" avg.attention ""
+  Chart.lines "zoom" avg.zoom ""
+  Chart.lines "rotate" avg.rotate ""
+  Chart.legend ""
 
-  Chart.subplot
+  Chart.subplot 3 1
+  Chart.xlim 0.0 18.0
+  Chart.yaxis "% time"
+  Chart.lines "attention" avg.tAttention ""
+  Chart.lines "zoom" avg.tZoom ""
+  Chart.lines "rotate" avg.tRotate ""
+  Chart.legend ""
+
+  Chart.subplot 3 1
+  Chart.xlim 0.0 18.0
+  Chart.yaxis "Num events"
+  Chart.lines "regression" avg.regression ""
+  Chart.lines "attention" avg.nAttention ""
+  Chart.lines "zoom" avg.nZoom ""
+  Chart.lines "rotate" avg.nRotate ""
+  Chart.legend ""
+
+  Chart.plotdone ""
 
 [<EntryPoint>]
 let main argv =
