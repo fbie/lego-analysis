@@ -51,6 +51,25 @@ let plot (file: string) =
 
   Chart.plotdone ""
 
+let avg (f: 'a -> Lazy<_>) a =
+    a
+    |> Seq.map (fun x -> (f x).Force ())
+    |> Seq.concat
+    |> Seq.groupBy fst
+    |> Seq.map (fun x -> fst x, snd x |> Seq.averageBy (fun x -> snd x))
+
+let aggregate files =
+  let a =
+    files
+    |> Seq.map (fun x -> Session.mkAggregated x)
+
+  Chart.subplot 3 1
+  Chart.xlim 0.0 18.0
+  Chart.yaxis "Time (s)"
+  Chart.lines "duration" (avg (fun (x: Session.Aggregated) -> x.duration) a) ""
+
+  Chart.subplot
+
 [<EntryPoint>]
 let main argv =
   argv |> Array.iter plot; 0

@@ -6,7 +6,7 @@ open Analyze.Gaze.Events
 open Analyze.Gaze.Raw
 open Analyze.Waves
 
-module private Util =
+module Util =
   let std aSeq =
     if not (Seq.isEmpty aSeq) then
       let avg = Seq.average aSeq
@@ -28,14 +28,26 @@ module private Util =
     else
       0.0
 
-  let apply f g h a =
-    Seq.zip (a |> Seq.map (fun x -> g x)) (a |> Seq.map (fun x -> h x) |> f)
+  let apply f g h i a =
+    Seq.zip (a |> Seq.map (fun x -> f x) |> g) (a |> Seq.map (fun x -> h x) |> i)
 
   let applyR f a =
-    apply f fst snd a
+    apply fst id snd f a
 
   let applyL f a =
-    apply f snd fst a |> Seq.map (fun x -> (snd x, fst x))
+    apply fst f snd id a
+
+  let swap a =
+    apply snd id fst id
+
+  let map f g h j a =
+    Seq.zip ((a |> Seq.map (fun x -> f x)) |> g) ((a |> Seq.map (fun x -> h x)) |> j)
+
+  let mapR f a =
+    map fst id snd f a
+
+  let mapL f a =
+    map fst f snd id a
 
   [<Measure>] type step
 
@@ -211,7 +223,7 @@ module Dilation =
     |> Seq.map (fun (r: Raw) -> (r.aT - r.startT), (r.leftEye.pupilSize + r.rightEye.pupilSize) / 2.0)
     |> interpolate
     |> filterOutliers
-    |> Util.applyR (Array.ofSeq >> Waves.d16)
+    |> Util.mapR (Array.ofSeq >> Waves.d16)
     |> normalize
 
 let pupilSize a = Dilation.pupilSize a
@@ -322,5 +334,5 @@ type Aggregated =
   member this.duration = lazy (Aggregate.duration this.s.events)
   member this.regression = lazy (Aggregate.regressions this.s.events)
 
-let mkAggregated s =
-    { s = s }
+let mkAggregated file =
+    { s = (mkSession file) }
