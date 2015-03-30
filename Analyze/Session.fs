@@ -6,7 +6,17 @@ open Analyze.Gaze.Events
 open Analyze.Gaze.Raw
 open Analyze.Waves
 
+open System.Collections.Concurrent
+
 module Util =
+  let memoize f =
+    let c = new ConcurrentDictionary<_,_>()
+    (fun k ->
+     match c.TryGetValue k with
+     | true, v -> v
+     | _ -> let v = f k in c.[k] <- v
+            v)
+
   let std aSeq =
     if not (Seq.isEmpty aSeq) then
       let avg = Seq.average aSeq
@@ -230,11 +240,12 @@ module Aggregate =
       | Next _ | Previous _ -> true
       | _ -> false
 
-  let private stampToStep a t =
-    let p = a |> Seq.fold (fun s x -> if isStep (snd x) && fst x <= t then Some (snd x) else s) None
-    match p with
-      | Some x -> Util.asStep x
-      | None -> 0.0<Util.step>
+  let private stampToStep =
+    Util.memoize (fun a t ->
+             let p = a |> Seq.fold (fun s x -> if isStep (snd x) && fst x <= t then Some (snd x) else s) None
+             match p with
+             | Some x -> Util.asStep x
+             | None -> 0.0<Util.step>)
 
   let private mapStep b (a: (float<_> * float<_>) seq) =
     a
@@ -344,10 +355,14 @@ type Averaged =
   { ags: Aggregated seq }
   member private this.avg (f: Aggregated -> Lazy<('a * float<_>) seq>) =
     this.ags
-    |> Seq.map (fun x -> (f x).Force ())
+    |> Seq.map (fun x -> async { return (f x).Force () })
+    |> Async.Parallel
+    |> Async.RunSynchronously
     |> Seq.concat
     |> Seq.groupBy fst
-    |> Seq.map (fun x -> fst x, snd x |> Seq.averageBy (fun x -> snd x))
+    |> Seq.map (fun x -> async { return fst x, snd x |> Seq.averageBy (fun x -> snd x) })
+    |> Async.Parallel
+    |> Async.RunSynchronously
   member this.attention = this.avg (fun x -> x.attention)
   member this.nAttention = this.avg (fun x -> x.nAttention)
   member this.tAttention = this.avg (fun x -> x.tAttention)
