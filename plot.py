@@ -21,10 +21,6 @@ class circularlist:
         self._i = (self._i + 1) % len(self._l)
         return v
 
-LINECOLORS = circularlist(list(c + l for l in LINES for c in COLORS))
-MARKERCOLORS = circularlist(list(c + m for m in MARKERS for c in COLORS))
-JUSTCOLORS = circularlist(COLORS)
-
 class superdefaultdict(defaultdict):
     def __init__(self, vals):
         defaultdict.__init__(self, None, vals)
@@ -35,8 +31,15 @@ class superdefaultdict(defaultdict):
             return DEFAULT[key]
         return val
 
+class Colors:
+    def __init__(self):
+        self.line = circularlist(list(c + l for l in LINES for c in COLORS))
+        self.marker = circularlist(list(c + m for m in MARKERS for c in COLORS))
+        self.colors = circularlist(COLORS)
+
 class Plotter:
     def __init__(self):
+        self.colors = Colors()
         self.sp_last = None
         self.sp_id = 1
         self.sp_bar_offset = 0.0
@@ -44,7 +47,7 @@ class Plotter:
 
     def points(self, cmd):
         data = eval(cmd['data'])
-        s = MARKERCOLORS.next()
+        s = self.colors.marker.next()
         plt.scatter([x for x,y in data],
                     [y for x,y in data],
                     c=s[0], marker=s[1],
@@ -56,7 +59,7 @@ class Plotter:
         data = eval(cmd['data'])
         plt.plot([x for x,y in data],
                  [y for x,y in data],
-                 LINECOLORS.next(),
+                 self.colors.line.next(),
                  label=cmd['label'],
                  alpha=float(cmd['alpha']),
                  linewidth=int(cmd['width']),
@@ -68,7 +71,7 @@ class Plotter:
                 height=[y for x,y in data],
                 width=float(cmd['width']),
                 label=cmd['label'],
-                color=JUSTCOLORS.next(),
+                color=self.colors.colors.next(),
                 linewidth=0)
         self.sp_bar_offset += float(cmd['width'])
 
@@ -88,6 +91,7 @@ class Plotter:
         self.sp_last = plt.subplot(int(cmd['width']), int(cmd['height']), self.sp_id)
         self.sp_id += 1
         self.sp_bar_offset = 0.0
+        self.colors = Colors()
 
     def legend(self, cmd):
         if self.sp_last:
