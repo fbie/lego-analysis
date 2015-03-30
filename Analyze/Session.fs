@@ -287,26 +287,25 @@ module Aggregate =
     |> mapStep a
 
 type Session =
-  { events: Lazy<(float<s> * Action) seq>; raw: Lazy<Raw seq>}
-  member private this.wrap f = lazy (f (this.events.Force()))
-  member this.attention = this.wrap attention
-  member this.nAttention = this.wrap nAttention
-  member this.tAttention = this.wrap tAttention
-  member this.zoom = this.wrap zoom
-  member this.nZoom = this.wrap nZoom
-  member this.tZoom = this.wrap tZoom
-  member this.rotate = this.wrap rotate
-  member this.nRotate = this.wrap nRotate
-  member this.tRotate = this.wrap tRotate
-  member this.start = lazy (this.events.Force() |> Seq.head |> fst)
-  member this.duration = lazy (this.events.Force() |> Seq.last |> fst)
-  member this.dilation = lazy (
-    let s = this.start.Force ()
-    let d = this.duration.Force ()
+  { events: (float<s> * Action) seq; raw: Lazy<Raw seq>}
+  member this.attention = attention this.events
+  member this.nAttention = nAttention this.events
+  member this.tAttention = tAttention this.events
+  member this.zoom = zoom this.events
+  member this.nZoom = nZoom this.events
+  member this.tZoom = tZoom this.events
+  member this.rotate = rotate this.events
+  member this.nRotate = nRotate this.events
+  member this.tRotate = tRotate this.events
+  member this.start = this.events |> Seq.head |> fst
+  member this.duration = this.events |> Seq.last |> fst
+  member this.dilation =
+    let s = this.start
+    let d = this.duration
     this.raw.Force()
     |> Seq.filter (fun x -> let t = x.aT - x.startT in t >= s || t <= d)
-    |> pupilSize)
-  member this.progress = lazy (progress (this.events.Force()))
+    |> pupilSize
+  member this.progress = progress this.events
 
 let mkSession file =
   let e = file |> Events.parseFile
@@ -315,7 +314,7 @@ let mkSession file =
 
 type Aggregated =
   { s: Session }
-  member private this.wrap (f: Lazy<'a>) = lazy (Aggregate.aggregateLazy (this.s.events.Force()) (f.Force()))
+  member private this.wrap a = Aggregate.aggregateLazy this.s.events a
   member this.attention = this.wrap this.s.attention
   member this.nAttention = this.wrap this.s.nAttention
   member this.tAttention = this.wrap this.s.tAttention
@@ -325,8 +324,8 @@ type Aggregated =
   member this.rotate = this.wrap this.s.rotate
   member this.nRotate = this.wrap this.s.nRotate
   member this.tRotate = this.wrap this.s.tRotate
-  member this.duration = lazy (Aggregate.duration (this.s.events.Force()))
-  member this.regression = lazy (Aggregate.regressions (this.s.events.Force()))
+  member this.duration = Aggregate.duration this.s.events
+  member this.regression = Aggregate.regressions this.s.events
 
 let mkAggregated file =
     { s = (mkSession file) }
@@ -339,8 +338,8 @@ let private group a =
 type Averaged =
   { ags: Aggregated seq }
 
-  member private this.group (f: Aggregated -> Lazy<('a * float<_>) seq>) =
-    Seq.map (fun x -> async { return (f x).Force () }) this.ags
+  member private this.group f =
+    Seq.map (fun x -> async { return f x }) this.ags
     |> Async.Parallel
     |> Async.RunSynchronously
     |> Seq.concat

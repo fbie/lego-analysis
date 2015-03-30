@@ -58,10 +58,10 @@ module Events =
     System.IO.File.ReadAllLines(filePath)
 
   let parseFile filePath =
-    lazy (filePath
-          |> readLines
-          |> makeEntries
-          |> normalize)
+    filePath
+    |> readLines
+    |> makeEntries
+    |> normalize
 
 module Raw =
   type Vec2D =

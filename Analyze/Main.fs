@@ -6,46 +6,46 @@ open Analyze.Time
 
 let plot (file: string) =
   let s = Session.mkSession file
-  let start = float (s.start.Force ())
-  let duration = float (s.duration.Force ())
+  let start = float s.start
+  let duration = float s.duration
 
   Chart.subplot 5 1
   Chart.xlim start duration
   Chart.ylim -0.2 0.2
   Chart.yaxis "Dilation (normalized)"
-  Chart.lines "pupils" (s.dilation.Force ()) "alpha=0.5"
+  Chart.lines "pupils" s.dilation "alpha=0.5"
 
   Chart.subplot 5 1
   Chart.xlim start duration
   Chart.ylim 0.0 18.0
   Chart.yaxis "Progress"
-  Chart.lines "progress" (s.progress.Force ()) "width=2"
+  Chart.lines "progress" s.progress "width=2"
 
   Chart.subplot 5 1
   Chart.xlim start duration
   Chart.yaxis "Time spent (s)"
   Chart.xaxis "Time (s)"
-  Chart.bars "attention" (s.attention.Force ())
-  Chart.bars "zoom" (s.zoom.Force ())
-  Chart.bars "rotate" (s.rotate.Force ())
+  Chart.bars "attention" s.attention
+  Chart.bars "zoom" s.zoom
+  Chart.bars "rotate" s.rotate
   Chart.legend ""
 
   Chart.subplot 5 1
   Chart.xlim start duration
   Chart.yaxis "Time spent %"
   Chart.xaxis "Time (s)"
-  Chart.bars "attention" (s.tAttention.Force ())
-  Chart.bars "zoom" (s.tZoom.Force ())
-  Chart.bars "rotate" (s.tRotate.Force ())
+  Chart.bars "attention" s.tAttention
+  Chart.bars "zoom" s.tZoom
+  Chart.bars "rotate" s.tRotate
   Chart.legend ""
 
   Chart.subplot 5 1
   Chart.xlim start duration
   Chart.yaxis "# Events"
   Chart.xaxis "Time (s)"
-  Chart.bars "attention" (s.nAttention.Force ())
-  Chart.bars "zoom" (s.nZoom.Force ())
-  Chart.bars "rotate" (s.nRotate.Force ())
+  Chart.bars "attention" s.nAttention
+  Chart.bars "zoom" s.nZoom
+  Chart.bars "rotate" s.nRotate
   Chart.legend ""
 
   Chart.plotdone ""
