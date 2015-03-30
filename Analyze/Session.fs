@@ -287,8 +287,8 @@ module Aggregate =
     |> mapStep a
 
 type Session =
-  { events: (float<s> * Action) seq; raw: Raw seq}
-  member private this.wrap f = lazy (f this.events)
+  { events: Lazy<(float<s> * Action) seq>; raw: Lazy<Raw seq>}
+  member private this.wrap f = lazy (f (this.events.Force()))
   member this.attention = this.wrap attention
   member this.nAttention = this.wrap nAttention
   member this.tAttention = this.wrap tAttention
@@ -298,15 +298,15 @@ type Session =
   member this.rotate = this.wrap rotate
   member this.nRotate = this.wrap nRotate
   member this.tRotate = this.wrap tRotate
-  member this.start = lazy (this.events |> Seq.head |> fst)
-  member this.duration = lazy (this.events |> Seq.last |> fst)
+  member this.start = lazy (this.events.Force() |> Seq.head |> fst)
+  member this.duration = lazy (this.events.Force() |> Seq.last |> fst)
   member this.dilation = lazy (
     let s = this.start.Force ()
     let d = this.duration.Force ()
-    this.raw
+    this.raw.Force()
     |> Seq.filter (fun x -> let t = x.aT - x.startT in t >= s || t <= d)
     |> pupilSize)
-  member this.progress = lazy (progress this.events)
+  member this.progress = lazy (progress (this.events.Force()))
 
 let mkSession file =
   let e = file |> Events.parseFile
@@ -315,7 +315,7 @@ let mkSession file =
 
 type Aggregated =
   { s: Session }
-  member private this.wrap (f: Lazy<'a>) = lazy (Aggregate.aggregateLazy this.s.events (f.Force()))
+  member private this.wrap (f: Lazy<'a>) = lazy (Aggregate.aggregateLazy (this.s.events.Force()) (f.Force()))
   member this.attention = this.wrap this.s.attention
   member this.nAttention = this.wrap this.s.nAttention
   member this.tAttention = this.wrap this.s.tAttention
@@ -325,8 +325,8 @@ type Aggregated =
   member this.rotate = this.wrap this.s.rotate
   member this.nRotate = this.wrap this.s.nRotate
   member this.tRotate = this.wrap this.s.tRotate
-  member this.duration = lazy (Aggregate.duration this.s.events)
-  member this.regression = lazy (Aggregate.regressions this.s.events)
+  member this.duration = lazy (Aggregate.duration (this.s.events.Force()))
+  member this.regression = lazy (Aggregate.regressions (this.s.events.Force()))
 
 let mkAggregated file =
     { s = (mkSession file) }

@@ -4,5 +4,6 @@ ANALYZE=$BASEDIR/Analyze
 BIN=$ANALYZE/bin/Release
 mkdir -p $BIN
 cp $FSD $BIN
+
 cd $ANALYZE
 fsharpc -O --tailcalls+ -r $FSD Time.fs Gaze.fs Waves.fs Stats.fs Session.fs Chart.fs Main.fs -o $BIN/Analyze.exe

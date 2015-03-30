@@ -38,17 +38,16 @@ module Events =
       | _ -> None
 
   let private normalize aSeq =
-    Seq.delay (fun () ->
-               let bSeq = aSeq |> Seq.skipWhile (fun x ->
-                                                 match snd x with
-                                                 | TutorialEnd -> false
-                                                 | _ -> true)
-               match bSeq |> Seq.tryFindIndex (fun x ->
-                                               match snd x with
-                                               | Done -> true
-                                               | _ -> false) with
-               | Some i -> bSeq |> Seq.truncate i
-               | None -> bSeq)
+    let bSeq = aSeq |> Seq.skipWhile (fun x ->
+                                      match snd x with
+                                      | TutorialEnd -> false
+                                      | _ -> true)
+    match bSeq |> Seq.tryFindIndex (fun x ->
+                                    match snd x with
+                                    | Done -> true
+                                    | _ -> false) with
+      | Some i -> bSeq |> Seq.truncate i
+      | None -> bSeq
 
   let makeEntries (lines: string array) =
     lines
@@ -59,10 +58,10 @@ module Events =
     System.IO.File.ReadAllLines(filePath)
 
   let parseFile filePath =
-    filePath
-    |> readLines
-    |> makeEntries
-    |> normalize
+    lazy (filePath
+          |> readLines
+          |> makeEntries
+          |> normalize)
 
 module Raw =
   type Vec2D =
@@ -110,5 +109,4 @@ module Raw =
     CsvFile.Load(csv, separators=";", ignoreErrors=true)
 
   let parseFile csv =
-    let raw = load csv
-    raw.Rows |> Seq.map toRaw |> Seq.choose id
+    lazy (let raw = load csv in raw.Rows |> Seq.map toRaw |> Seq.choose id)
