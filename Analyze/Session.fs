@@ -58,17 +58,12 @@ module Util =
       | _ -> failwith "Cannot compute steps as float for non-step event."
 
 module private Progress =
-  let steps a =
+  let prog a =
     a
     |> Seq.filter (fun x ->
                    match snd x with
-                   | Next _
-                   | Previous _ -> true
+                   | Next _ | Previous _ -> true
                    | _ -> false)
-
-  let prog a =
-    a
-    |> steps
     |> (fun s -> seq { yield Seq.head s; yield! s; yield Seq.last s })
     |> Seq.pairwise
     |> Seq.collect (fun (x, y) ->
@@ -230,8 +225,16 @@ let pupilSize a = Dilation.pupilSize a
 
 module Aggregate =
 
+  let private isStep =
+    function
+      | Next _ | Previous _ -> true
+      | _ -> false
+
   let private stampToStep a t =
-    a |> Seq.skipWhile (fun x -> fst x <> t) |> Seq.head |> snd |> Util.asStep
+    let p = a |> Seq.fold (fun s x -> if isStep (snd x) && fst x <= t then Some (snd x) else s) None
+    match p with
+      | Some x -> Util.asStep x
+      | None -> 0.0<Util.step>
 
   let private mapStep b (a: (float<_> * float<_>) seq) =
     a
