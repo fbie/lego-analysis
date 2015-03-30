@@ -6,7 +6,6 @@ open Analyze.Time
 
 let plot (file: string) =
   let s = Session.mkSession file
-
   let start = float (s.start.Force ())
   let duration = float (s.duration.Force ())
 
@@ -84,4 +83,5 @@ let aggregate files =
 
 [<EntryPoint>]
 let main argv =
-  argv |> Array.iter plot; 0
+  //  argv |> Array.iter plot; 0
+  aggregate argv; 0
