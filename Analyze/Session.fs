@@ -68,16 +68,16 @@ module private Events =
   let private zT = 0.2<s> (* For a change of 11 x change. *)
 
   (* Partition event timeline by steps. *)
-  let partition a =
+  let partition =
     let step =
       function
         | Next _
         | Previous _ -> true
         | _ -> false
-    a
-    |> Seq.scan (fun (s, _) t -> if step (snd t) then (s + 1, t) else (s, t)) (0, a |> Seq.head)
-    |> Seq.groupBy fst
-    |> Seq.map (fun (_, s) -> s |> Seq.map snd)
+    Util.memoize (fun a ->
+                  Seq.scan (fun (s, _) t -> if step (snd t) then (s + 1, t) else (s, t)) (0, a |> Seq.head) a
+                  |> Seq.groupBy fst
+                  |> Seq.map (fun (_, s) -> s |> Seq.map snd))
 
   (* Zip some events with steps. *)
   let zip a f =
