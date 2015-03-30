@@ -56,27 +56,27 @@ let aggregate files =
   Chart.subplot 3 1
   Chart.xlim 0.0 18.0
   Chart.yaxis "Time (s)"
-  Chart.lines "attention" avg.attention ""
-  Chart.lines "zoom" avg.zoom ""
-  Chart.lines "rotate" avg.rotate ""
-  Chart.lines "duration" avg.duration ""
+  Chart.bars "attention" avg.attention
+  Chart.bars "zoom" avg.zoom
+  Chart.bars "rotate" avg.rotate
+  Chart.bars "duration" avg.duration
   Chart.legend ""
 
   Chart.subplot 3 1
   Chart.xlim 0.0 18.0
   Chart.yaxis "% time"
-  Chart.lines "attention" avg.tAttention ""
-  Chart.lines "zoom" avg.tZoom ""
-  Chart.lines "rotate" avg.tRotate ""
+  Chart.bars "attention" avg.tAttention
+  Chart.bars "zoom" avg.tZoom
+  Chart.bars "rotate" avg.tRotate
   Chart.legend ""
 
   Chart.subplot 3 1
   Chart.xlim 0.0 18.0
   Chart.yaxis "Num events"
-  Chart.lines "attention" avg.nAttention ""
-  Chart.lines "zoom" avg.nZoom ""
-  Chart.lines "rotate" avg.nRotate ""
-  Chart.lines "regression" avg.regression ""
+  Chart.bars "attention" avg.nAttention
+  Chart.bars "zoom" avg.nZoom
+  Chart.bars "rotate" avg.nRotate
+  Chart.bars "regression" avg.regression
   Chart.legend ""
 
   Chart.plotdone ""

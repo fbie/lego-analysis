@@ -5,38 +5,18 @@ open Analyze.Gaze
 open Analyze.Gaze.Events
 open Analyze.Gaze.Raw
 open Analyze.Waves
+open Analyze.Stats
 
 open System.Collections.Concurrent
 
 module Util =
   let memoize f =
-    let c = new ConcurrentDictionary<_,_>()
+    let c = new ConcurrentDictionary<_,Lazy<_>>()
     (fun k ->
      match c.TryGetValue k with
-     | true, v -> v
-     | _ -> let v = f k in c.[k] <- v
-            v)
-
-  let std aSeq =
-    if not (Seq.isEmpty aSeq) then
-      let avg = Seq.average aSeq
-      (Seq.fold (fun s x -> s + (x - avg) ** 2.0) 0.0 aSeq |> sqrt) / (Seq.length >> float) aSeq
-    else
-      0.0
-
-  let sstd aSeq =
-    if Seq.length aSeq > 1 then
-      let avg = Seq.average aSeq
-      (Seq.fold (fun s x -> s + (x - avg) ** 2.0) 0.0 aSeq |> sqrt) / ((Seq.length >> float) aSeq - 1.0)
-    else
-      0.0
-
-  let sem aSeq =
-    let n = Seq.length aSeq
-    if n > 0 then
-      sstd aSeq / float n
-    else
-      0.0
+     | true, v -> v.Force()
+     | _ -> let v = lazy f k in c.[k] <- v
+            v.Force())
 
   let apply f g h i a =
     Seq.zip (a |> Seq.map (fun x -> f x) |> g) (a |> Seq.map (fun x -> h x) |> i)
@@ -50,8 +30,8 @@ module Util =
   let swap a =
     apply snd id fst id
 
-  let map f g h j a =
-    Seq.zip ((a |> Seq.map (fun x -> f x)) |> g) ((a |> Seq.map (fun x -> h x)) |> j)
+  let map f g h i a =
+    Seq.map (fun x -> (f >> g) x , (h >> i) x) a
 
   let mapR f a =
     map fst id snd f a
@@ -96,8 +76,8 @@ module private Events =
         | _ -> false
     a
     |> Seq.scan (fun (s, _) t -> if step (snd t) then (s + 1, t) else (s, t)) (0, a |> Seq.head)
-    |> Seq.groupBy (fun (x, _) -> x)
-    |> Seq.map (fun (_, s) -> s |> Seq.map (fun (_, x) -> x))
+    |> Seq.groupBy fst
+    |> Seq.map (fun (_, s) -> s |> Seq.map snd)
 
   (* Zip some events with steps. *)
   let zip a f =
@@ -220,15 +200,15 @@ module Dilation =
                |> List.toSeq)
 
   let private filterOutliers a =
-    let lim = 2.0 * (a |> Seq.map (fun x -> snd x) |> Util.std)
-    a |> Seq.filter (fun x -> snd x >= lim)
+    let (_, lim) = (a |> Seq.map snd |> Stats.std id)
+    a |> Seq.filter (fun x -> snd x >= 2.0 * lim)
 
   let pupilSize a =
     a
     |> Seq.map (fun (r: Raw) -> (r.aT - r.startT), (r.leftEye.pupilSize + r.rightEye.pupilSize) / 2.0)
     |> interpolate
     |> filterOutliers
-    |> Util.mapR (Array.ofSeq >> Waves.d16)
+    |> Util.applyR (Array.ofSeq >> Waves.d16)
     |> normalize
 
 let pupilSize a = Dilation.pupilSize a
@@ -251,7 +231,7 @@ module Aggregate =
     a
     |> Seq.map (fun x -> stampToStep b (fst x), snd x)
     |> Seq.groupBy fst
-    |> Seq.map (fun x -> fst x, snd x |> Seq.sumBy (fun x -> snd x))
+    |> Seq.map (fun x -> fst x, snd x |> Seq.sumBy snd)
 
   let aggregate f a =
     (f >> mapStep a) a
@@ -351,29 +331,49 @@ type Aggregated =
 let mkAggregated file =
     { s = (mkSession file) }
 
+let private group a =
+  a
+  |> Seq.groupBy fst
+  |> Seq.map (fun x -> fst x, snd x |> Seq.map snd)
+
 type Averaged =
   { ags: Aggregated seq }
-  member private this.avg (f: Aggregated -> Lazy<('a * float<_>) seq>) =
-    this.ags
-    |> Seq.map (fun x -> async { return (f x).Force () })
+
+  member private this.group (f: Aggregated -> Lazy<('a * float<_>) seq>) =
+    Seq.map (fun x -> async { return (f x).Force () }) this.ags
     |> Async.Parallel
     |> Async.RunSynchronously
     |> Seq.concat
-    |> Seq.groupBy fst
-    |> Seq.map (fun x -> async { return fst x, snd x |> Seq.averageBy (fun x -> snd x) })
+    |> group
+
+  member private this.avg (a: ('a * float<_> seq) seq) =
+    Seq.map (fun x -> async { return fst x, Seq.average (snd x) }) a
     |> Async.Parallel
     |> Async.RunSynchronously
-  member this.attention = this.avg (fun x -> x.attention)
-  member this.nAttention = this.avg (fun x -> x.nAttention)
-  member this.tAttention = this.avg (fun x -> x.tAttention)
-  member this.zoom = this.avg (fun x -> x.zoom)
-  member this.nZoom = this.avg (fun x -> x.nZoom)
-  member this.tZoom = this.avg (fun x -> x.tZoom)
-  member this.rotate = this.avg (fun x -> x.rotate)
-  member this.nRotate = this.avg (fun x -> x.nRotate)
-  member this.tRotate = this.avg (fun x -> x.tRotate)
-  member this.duration = this.avg (fun x -> x.duration)
-  member this.regression = this.avg (fun x -> x.regression)
+
+  member private this.weightened (f: Aggregated -> Lazy<_>) a =
+    let w = Seq.map (fun (x: Aggregated) -> x.duration.Force() |> Seq.skip 1) a
+    let v = Seq.map (fun x -> (f x).Force()) a
+    Seq.map2 (fun x y -> Seq.map2 (fun i j -> fst i, snd i * snd j) x y ) w v
+    |> Seq.concat
+    |> group
+    |> Util.mapR Seq.sum
+    |> Seq.map2 (fun x y -> fst y, snd y / snd x) (Seq.concat w |> group |> Util.mapR Seq.sum)
+
+  member this.attention = (this.group >> this.avg) (fun x -> x.attention)
+  member this.nAttention = (this.group >> this.avg) (fun x -> x.nAttention)
+  member this.tAttention = this.weightened (fun x -> x.tAttention) this.ags
+
+  member this.zoom = (this.group >> this.avg) (fun x -> x.zoom)
+  member this.nZoom = (this.group >> this.avg) (fun x -> x.nZoom)
+  member this.tZoom = this.weightened (fun x -> x.tZoom) this.ags
+
+  member this.rotate = (this.group >> this.avg) (fun x -> x.rotate)
+  member this.nRotate = (this.group >> this.avg) (fun x -> x.nRotate)
+  member this.tRotate = this.weightened (fun x -> x.tRotate) this.ags
+
+  member this.duration = (this.group >> this.avg) (fun x -> x.duration)
+  member this.regression = (this.group >> this.avg) (fun x -> x.regression)
 
 let mkAveraged files =
   { ags = Seq.map (fun x -> mkAggregated x) files }
