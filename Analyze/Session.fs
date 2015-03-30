@@ -351,29 +351,23 @@ type Averaged =
     |> Async.Parallel
     |> Async.RunSynchronously
 
-  member private this.weightened (f: Aggregated -> Lazy<_>) a =
-    let w = Seq.map (fun (x: Aggregated) -> x.duration.Force() |> Seq.skip 1) a
-    let v = Seq.map (fun x -> (f x).Force()) a
-    Seq.map2 (fun x y -> Seq.map2 (fun i j -> fst i, snd i * snd j) x y ) w v
-    |> Seq.concat
-    |> group
-    |> Util.mapR Seq.sum
-    |> Seq.map2 (fun x y -> fst y, snd y / snd x) (Seq.concat w |> group |> Util.mapR Seq.sum)
+  member this.duration = (this.group >> this.avg) (fun x -> x.duration) |> Seq.skip 1
+  member this.regression = (this.group >> this.avg) (fun x -> x.regression)
+
+  member private this.mAvg a =
+    Seq.map2 (fun x y -> fst x, snd x / snd y) a this.duration
 
   member this.attention = (this.group >> this.avg) (fun x -> x.attention)
   member this.nAttention = (this.group >> this.avg) (fun x -> x.nAttention)
-  member this.tAttention = this.weightened (fun x -> x.tAttention) this.ags
+  member this.tAttention = this.mAvg this.attention
 
   member this.zoom = (this.group >> this.avg) (fun x -> x.zoom)
   member this.nZoom = (this.group >> this.avg) (fun x -> x.nZoom)
-  member this.tZoom = this.weightened (fun x -> x.tZoom) this.ags
+  member this.tZoom = this.mAvg this.zoom
 
   member this.rotate = (this.group >> this.avg) (fun x -> x.rotate)
   member this.nRotate = (this.group >> this.avg) (fun x -> x.nRotate)
-  member this.tRotate = this.weightened (fun x -> x.tRotate) this.ags
-
-  member this.duration = (this.group >> this.avg) (fun x -> x.duration)
-  member this.regression = (this.group >> this.avg) (fun x -> x.regression)
+  member this.tRotate = this.mAvg this.rotate
 
 let mkAveraged files =
   { ags = Seq.map (fun x -> mkAggregated x) files }
