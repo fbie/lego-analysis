@@ -37,17 +37,16 @@ module Events =
       | Some x -> Some (fst m, x)
       | _ -> None
 
-  let private normalize aSeq =
-    let bSeq = aSeq |> Seq.skipWhile (fun x ->
-                                      match snd x with
-                                      | TutorialEnd -> false
-                                      | _ -> true)
-    match bSeq |> Seq.tryFindIndex (fun x ->
-                                    match snd x with
-                                    | Done -> true
-                                    | _ -> false) with
-      | Some i -> bSeq |> Seq.truncate i
-      | None -> bSeq
+  let private normalize a =
+    a
+    |> Seq.skipWhile (fun x ->
+                      match snd x with
+                      | TutorialEnd -> false
+                      | _ -> true)
+    |> Seq.takeWhile (fun x ->
+                      match snd x with
+                      | Done -> false
+                      | _ -> true)
 
   let makeEntries (lines: string array) =
     lines
