@@ -9,7 +9,7 @@ COLORS = ('b', 'g', 'r', 'c', 'm', 'y', 'k')
 LINES = ('-', '--', '-.', ':')
 MARKERS = ('.', ',', 'o', 'v', '^', '<', '>', 's', '*', '+')
 
-DEFAULT = { 'label': None, 'alpha': 1.0, 'width': 1, 'height': 1 }
+DEFAULT = { 'label': None, 'alpha': 1.0, 'width': 1, 'height': 1, 'yerr': None }
 
 class circularlist:
     def __init__(self, l):
@@ -72,6 +72,7 @@ class Plotter:
                 width=float(cmd['width']),
                 label=cmd['label'],
                 color=self.colors.colors.next(),
+                yerr=cmd['yerr'],
                 linewidth=0)
         self.sp_bar_offset += float(cmd['width'])
 
