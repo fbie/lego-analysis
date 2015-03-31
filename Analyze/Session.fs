@@ -1,5 +1,6 @@
 module Analyze.Session
 
+open Extensions
 open Analyze.Time
 open Analyze.Gaze
 open Analyze.Gaze.Events
@@ -17,27 +18,6 @@ module Util =
      | true, v -> v.Force()
      | _ -> let v = lazy f k in c.[k] <- v
             v.Force())
-
-  let apply f g h i a =
-    Seq.zip (a |> Seq.map (fun x -> f x) |> g) (a |> Seq.map (fun x -> h x) |> i)
-
-  let applyR f a =
-    apply fst id snd f a
-
-  let applyL f a =
-    apply fst f snd id a
-
-  let swap a =
-    apply snd id fst id
-
-  let map f g h i a =
-    Seq.map (fun x -> (f >> g) x , (h >> i) x) a
-
-  let mapR f a =
-    map fst id snd f a
-
-  let mapL f a =
-    map fst f snd id a
 
   [<Measure>] type step
 
@@ -208,7 +188,7 @@ module Dilation =
     |> Seq.map (fun (r: Raw) -> (r.aT - r.startT), (r.leftEye.pupilSize + r.rightEye.pupilSize) / 2.0)
     |> interpolate
     |> filterOutliers
-    |> Util.applyR (Array.ofSeq >> Waves.d16)
+    |> Seq.applyR (Array.ofSeq >> Waves.d16)
     |> normalize
 
 let pupilSize a = Dilation.pupilSize a
