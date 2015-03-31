@@ -61,15 +61,12 @@ module private Events =
 
   (* Zip some events with steps. *)
   let zip a f =
-    let s = a |> Seq.choose (fun (t, x) ->
-                             match x with
-                             | Next _
-                             | Previous _ -> Some t
-                             | _ -> None)
-    let t = a
-            |> f
-            |> Seq.skip 1 (* Skip one to align with steps *)
-    Seq.zip s t
+    let t s = Seq.choose (fun (t, x) ->
+                          match x with
+                          | Next _ | Previous _ -> Some t
+                          | _ -> None) s
+    Seq.tuple (id) (id) a
+    |> Seq.apply t (f >> Seq.skip 1)
 
   (* Compute attention time per step. *)
   let attention a =
@@ -164,7 +161,7 @@ let nRotate a =
   Events.zip a Events.nRotate
 
 let tRotate a =
-  Events.pTime (zoom a) a
+  Events.pTime (rotate a) a
 
 module Dilation =
   let private normalize (l: seq<'a * float>) =

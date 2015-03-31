@@ -4,29 +4,33 @@ module Seq =
   let split a =
     Seq.map (fun x -> fst x) a, Seq.map (fun x -> snd x) a
 
-  let apply f g h i a =
-    Seq.zip (a |> Seq.map (fun x -> f x) |> g) (a |> Seq.map (fun x -> h x) |> i)
-
-  let applyR f =
-    apply fst id snd f
-
-  let applyL f =
-    apply fst f snd id
+  let zip' a =
+    Seq.zip (fst a) (snd a)
 
   let swap a =
-    apply snd id fst id a
+    split a |> (fun x -> snd x, fst x) |> zip'
 
-  let tuple f g =
-    Seq.map (fun x -> f x , g x)
+  let apply f g a =
+    let s = split a
+    zip' (f (fst s), g (snd s))
 
-  let tupleR f =
+  let applyR f =
+    apply id f
+
+  let applyL f =
+    apply f id
+
+  let tuple f g a =
+    Seq.map (fun x -> f x, g x) a
+
+  let mapR f =
     tuple (fst >> id) (snd >> f)
 
-  let tupleL f =
+  let mapL f =
     tuple (fst >> f) (snd >> id)
 
-  let rec zap a b =
+  let rec catzip a b =
     if Seq.isEmpty a then
       b
     else
-      seq { yield Seq.head a; yield! (zap b (Seq.skip 1 a)) }
+      seq { yield Seq.head a; yield! (catzip b (Seq.skip 1 a)) }
