@@ -20,8 +20,8 @@ let points title data =
 let lines title data =
   chart "lines" title data
 
-let bars title data =
-  chart "bars" title data "width=5.0"
+let bars title data width =
+  chart "bars" title data (sprintf "width=%f" width)
 
 let xaxis =
   printfn "cmd=xaxis;label=%s"
