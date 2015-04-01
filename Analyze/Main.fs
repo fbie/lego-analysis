@@ -4,41 +4,37 @@ open Analyze.Gaze
 open Analyze.Time
 open Analyze.Step
 
-module Error =
-  type Error<'a, 'b> =
-    | Cont of 'a
-    | Fail of 'b
+type Error<'a, 'b> =
+  | Cont of 'a
+  | Fail of 'b
 
-  let cont x =
-    Cont x
+let cont x =
+  Cont x
 
-  let fail e =
-    Fail e
+let fail e =
+  Fail e
 
-  let bind f m =
-    match m with
-      | Cont x -> f x
-      | Fail e -> fail e
-
-  let tryWith f m =
-    try
-      f m |> cont
-    with
-      | e -> fail e
+let bind f m =
+  match m with
+    | Cont x -> f x
+    | Fail e -> fail e
 
 let (>>=) m f =
-  Error.bind f m
+  bind f m
 
 let (>=>) f g =
-  f >> (Error.bind g)
+  f >> (bind g)
+
+let tryWith f m =
+  try
+    f m |> cont
+  with
+    | e -> fail e
 
 let (!?) f =
-  Error.tryWith f
+  tryWith f
 
-let parse =
-  Error.tryWith Events.parseFile
-
-let read =
+let readl =
   !? Events.parseFile
   >=> !? Step.mkSteps
   >=> !? Step.group
@@ -47,5 +43,13 @@ let read =
 
 [<EntryPoint>]
 let main argv =
-  Seq.map read argv |> ignore
+  printfn "%s" Csl.header
+  Seq.map readl argv
+  |> Seq.choose (function
+                 | Cont c -> Some c
+                 | Fail e -> eprintfn "%s" e.Message; None)
+  |> Step.transpose
+  |> Seq.map Step.average
+  |> Step.cat
+  |> printfn "%s"
   0

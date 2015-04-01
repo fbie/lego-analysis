@@ -72,7 +72,6 @@ module private Events =
   let attention a =
     partition a
     |> Seq.pairwise
-    |> Seq.rLast
     |> Seq.map (fun (x, y) -> seq { yield! x; yield y |> Seq.head })
     |> Seq.map (fun x ->
                 x
@@ -92,13 +91,25 @@ module private Events =
                 |> Seq.sum)
 
   let private forPartitions a f =
-    partition a |> Seq.map (fun s -> f s)
+    partition a
+    |> Seq.map (fun s -> f s)
 
+  let nAttention a =
+    forPartitions a (Seq.sumBy (fun x ->
+                                match snd x with
+                                | Tracking _ -> 1.0
+                                | _ -> 0.0))
   let zoom a =
     forPartitions a (Seq.sumBy (fun x ->
                               match snd x with
                               | Zoom _ -> zT
                               | _ -> 0.0<s>))
+
+  let nZoom a =
+    forPartitions a (Seq.sumBy (fun x ->
+                                  match snd x with
+                                  | Zoom _ -> 1.0
+                                  | _ -> 0.0))
   let rotate a =
     forPartitions a (Seq.choose (fun x ->
                                  match snd x with
@@ -107,15 +118,50 @@ module private Events =
     |> Seq.map (fun s -> s
                          |> Seq.pairwise
                          |> Seq.sumBy (fun (x, y) -> abs (x - y) * rT / 360.0))
+  let nRotate a =
+    forPartitions a (Seq.sumBy (fun x ->
+                                match snd x with
+                                | Rotation _ -> 1.0
+                                | _ -> 0.0))
+
+  let pTime a e =
+    let s = e |> Seq.choose (fun x ->
+                             match snd x with
+                             | Next _
+                             | Previous _ -> Some x
+                             | _ -> None)
+              |> Seq.pairwise
+              |> Seq.map (fun (x, y) -> fst y - fst x)
+    s
+    |> Seq.map2 (fun (x, y) z -> (x, y / z)) a
+    |> Seq.truncate (Seq.length s)
 
 let attention a =
   Events.zip a Events.attention
 
+let nAttention a =
+  Events.zip a Events.nAttention
+
+let tAttention a =
+  Events.pTime (attention a) a
+
 let zoom a =
   Events.zip a Events.zoom
 
+let nZoom a =
+  Events.zip a Events.nZoom
+
+let tZoom a =
+  Events.pTime (zoom a) a
+
 let rotate a =
   Events.zip a Events.rotate
+
+let nRotate a =
+  Events.zip a Events.nRotate
+
+let tRotate a =
+  Events.pTime (rotate a) a
 
 module Dilation =
   let private normalize (l: seq<'a * float>) =
@@ -158,7 +204,7 @@ module Aggregate =
              | Some x -> Util.asStep x
              | None -> 0.0<Util.step>)
 
-  let private mapStep (b: (_ * Action) seq) (a: (float<_> * float<_>) seq) =
+  let private mapStep b (a: (float<_> * float<_>) seq) =
     a
     |> Seq.map (fun x -> stampToStep b (fst x), snd x)
     |> Seq.groupBy fst
@@ -173,11 +219,29 @@ module Aggregate =
   let attention a =
     aggregate attention a
 
+  let nAttention a =
+    aggregate nAttention a
+
+  let tAttention a =
+    aggregate tAttention a
+
   let zoom a =
     aggregate zoom a
 
+  let nZoom a =
+    aggregate nZoom a
+
+  let tZoom a =
+    aggregate tZoom a
+
   let rotate a =
     aggregate rotate a
+
+  let nRotate a =
+    aggregate nRotate a
+
+  let tRotate a =
+    aggregate tRotate a
 
   let duration a =
     a
@@ -202,8 +266,14 @@ module Aggregate =
 type Session =
   { events: (float<s> * Action) seq; raw: Lazy<Raw seq>}
   member this.attention = attention this.events
+  member this.nAttention = nAttention this.events
+  member this.tAttention = tAttention this.events
   member this.zoom = zoom this.events
+  member this.nZoom = nZoom this.events
+  member this.tZoom = tZoom this.events
   member this.rotate = rotate this.events
+  member this.nRotate = nRotate this.events
+  member this.tRotate = tRotate this.events
   member this.start = this.events |> Seq.head |> fst
   member this.duration = this.events |> Seq.last |> fst
   member this.dilation =
@@ -218,3 +288,62 @@ let mkSession file =
   let e = file |> Events.parseFile
   let r = file.Replace(".csv", "-raw.csv") |> Raw.parseFile
   { events = e; raw = r }
+
+type Aggregated =
+  { s: Session }
+  member private this.wrap a = Aggregate.aggregateLazy this.s.events a
+  member this.attention = this.wrap this.s.attention
+  member this.nAttention = this.wrap this.s.nAttention
+  member this.tAttention = this.wrap this.s.tAttention
+  member this.zoom = this.wrap this.s.zoom
+  member this.nZoom = this.wrap this.s.nZoom
+  member this.tZoom = this.wrap this.s.tZoom
+  member this.rotate = this.wrap this.s.rotate
+  member this.nRotate = this.wrap this.s.nRotate
+  member this.tRotate = this.wrap this.s.tRotate
+  member this.duration = Aggregate.duration this.s.events
+  member this.regression = Aggregate.regressions this.s.events
+
+let mkAggregated file =
+    { s = (mkSession file) }
+
+let private group a =
+  a
+  |> Seq.groupBy fst
+  |> Seq.map (fun x -> fst x, snd x |> Seq.map snd)
+
+type Averaged =
+  { ags: Aggregated seq }
+
+  member private this.group f =
+    Seq.map (fun x -> async { return f x }) this.ags
+    |> Async.Parallel
+    |> Async.RunSynchronously
+    |> Seq.concat
+    |> group
+
+  member private this.avg (a: ('a * float<_> seq) seq) =
+    Seq.map (fun x -> async { return fst x, Seq.average (snd x) }) a
+    |> Async.Parallel
+    |> Async.RunSynchronously
+
+  member this.duration = (this.group >> this.avg) (fun x -> x.duration) |> Seq.skip 1
+  member this.regression = (this.group >> this.avg) (fun x -> x.regression)
+
+  member private this.mAvg a =
+    Seq.map2 (fun x y -> fst x, snd x / snd y) a this.duration
+
+  member this.attention = (this.group >> this.avg) (fun x -> x.attention)
+  member this.nAttention = (this.group >> this.avg) (fun x -> x.nAttention)
+  member this.tAttention = this.mAvg this.attention
+
+  member this.zoom = (this.group >> this.avg) (fun x -> x.zoom)
+  member this.nZoom = (this.group >> this.avg) (fun x -> x.nZoom)
+  member this.tZoom = this.mAvg this.zoom
+
+  member this.rotate = (this.group >> this.avg) (fun x -> x.rotate)
+  member this.nRotate = (this.group >> this.avg) (fun x -> x.nRotate)
+  member this.tRotate = this.mAvg this.rotate
+
+let mkAveraged files =
+  { ags = Seq.map (fun x -> mkAggregated x) files }

@@ -97,7 +97,11 @@ let private mkStep s a =
 
 (* Make steps from a timeline of events. *)
 let mkSteps a =
-  Seq.scan (fun (s, t) x -> if isStep (snd x) then (s + 1, x) else (s, t)) (0, a |> Seq.head) a
+  Seq.scan (fun (s, _) x ->
+            if isStep (snd x) then
+              (s + 1, x)
+            else
+              (s, x)) (0, a |> Seq.head) a
   |> Seq.groupBy fst
   |> Seq.map (fun (_, s) -> s |> Seq.map snd)
   |> Seq.scan mkStep State.empty
@@ -120,11 +124,13 @@ type Csl =
   static member header = "index;duration;attention;zoom;rotate"
 
   (* Simply add two lines. *)
-  static member (+) (a, b) = { idx = a.idx;
-                               duration = a.duration + b.duration;
-                               attention = a.attention + b.attention;
-                               zoom = a.zoom + b.zoom;
-                               rotate = a.rotate + b.rotate }
+  static member add a b = { idx = b.idx;
+                            duration = a.duration + b.duration;
+                            attention = a.attention + b.attention;
+                            zoom = a.zoom + b.zoom;
+                            rotate = a.rotate + b.rotate }
+
+  static member (+) (a, b) = Csl.add a b
 
   (* Divie a line by some integer. *)
   static member (/) (a, i) = { idx = a.idx;
@@ -133,7 +139,8 @@ type Csl =
                                zoom = a.zoom / float i;
                                rotate = a.rotate / float i }
 
-  static member DivideByInt i (a: Csl)  = a / i
+  static member DivideByInt (a: Csl) i =
+    if i = 0 then a else a / i
 
   (* The empty line. *)
   static member empty = { idx = 0;
@@ -155,10 +162,12 @@ let mkCsv a =
   Seq.map mkCsl a
 
 (* Sort all steps so that every step is immediately followed
-   by the sum of its regressions. *)
+   by the sum of its regressions, if any. *)
 let reduce (a: Csl seq seq) =
-  Seq.map (fun x ->
-           seq { yield Seq.head x; yield Seq.sum (Seq.skip 1 x) }) a
+  Seq.map (fun x -> seq { yield Seq.head x
+                          let t = Seq.skip 1 x
+                          if not (Seq.isEmpty t) then
+                            yield Seq.sum t }) a
   |> Seq.concat
 
 let catl l =
@@ -173,3 +182,10 @@ let transpose l =
   |> Seq.concat
   |> Seq.groupBy fst
   |> Seq.map (fun (i, s) -> Seq.map snd s)
+
+let average (csv: Csl seq) =
+  let l = Seq.length csv
+  if l <= 0 then
+    Csl.empty
+  else
+    (Seq.sum csv) / l
