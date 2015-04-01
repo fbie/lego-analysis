@@ -32,14 +32,20 @@ let (>>=) m f =
 let (>=>) f g =
   f >> (Error.bind g)
 
+let (!?) f =
+  Error.tryWith f
+
 let parse =
   Error.tryWith Events.parseFile
 
-let csl f =
-  parse f
-  >>= (mkSteps >> Error.cont)
+let read =
+  !? Events.parseFile
+  >=> !? Step.mkSteps
+  >=> !? Step.group
+  >=> !? (Seq.map Step.mkCsv)
+  >=> !? Step.reduce
 
 [<EntryPoint>]
 let main argv =
-  Seq.map csl argv |> ignore
+  Seq.map read argv |> ignore
   0
