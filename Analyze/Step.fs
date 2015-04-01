@@ -28,8 +28,7 @@ let private events s =
 (* Compute the time used to zoom. *)
 let zoom s =
   events s
-  |> Seq.sumBy (fun x ->
-                match x with
+  |> Seq.sumBy (function
                 | Zoom _ -> 0.2<s>
                 | _ -> 0.0<s>)
 
@@ -45,15 +44,14 @@ let rotate s =
   events s
   |> Seq.choose rot
   |> Seq.pairwise
-  |> Seq.sumBy (fun (x, y) -> abs (x - y) * 4.0<s> / 360.0)
+  |> Seq.sumBy (fun (x, y) -> abs (y - x) * 4.0<s> / 360.0)
 
 (* Compute the time the user spent looking at the screen. *)
 let attention s =
-  let att =
-    function
-      | Tracking b -> Some b
-      | _ -> None
-  Seq.applyR (Seq.choose att) s.events
+  Seq.choose (fun x ->
+              match snd x with
+              | Tracking b -> Some (fst x, b)
+              | _ -> None) s.events
   |> Seq.pairwise
   |> Seq.sumBy (fun (a, b) -> if snd b then fst b - fst a + 0.8<s> else 0.0<s>)
   |> (-) (duration s)
@@ -122,18 +120,20 @@ type Csl =
   static member header = "index;duration;attention;zoom;rotate"
 
   (* Simply add two lines. *)
-  static member (+) (a, b) = { idx = a.idx + b.idx;
+  static member (+) (a, b) = { idx = a.idx;
                                duration = a.duration + b.duration;
                                attention = a.attention + b.attention;
                                zoom = a.zoom + b.zoom;
                                rotate = a.rotate + b.rotate }
 
   (* Divie a line by some integer. *)
-  static member (/) (a, i) = { idx = a.idx / i;
+  static member (/) (a, i) = { idx = a.idx;
                                duration = a.duration / float i;
                                attention = a.attention / float i;
                                zoom = a.zoom / float i;
                                rotate = a.rotate / float i }
+
+  static member DivideByInt i (a: Csl)  = a / i
 
   (* The empty line. *)
   static member empty = { idx = 0;
@@ -155,8 +155,21 @@ let mkCsv a =
   Seq.map mkCsl a
 
 (* Sort all steps so that every step is immediately followed
-   by its regressions and sum up the regressions. *)
+   by the sum of its regressions. *)
 let reduce (a: Csl seq seq) =
   Seq.map (fun x ->
-           seq { yield Seq.head x; yield (Seq.sum (Seq.skip 1 x)) }) a
+           seq { yield Seq.head x; yield Seq.sum (Seq.skip 1 x) }) a
   |> Seq.concat
+
+let catl l =
+  sprintf "%i;%f;%f;%f;%f" l.idx (float l.duration) (float l.attention) (float l.zoom) (float l.rotate)
+
+let cat l =
+  Seq.map catl l
+  |> String.concat "\n"
+
+let transpose l =
+  Seq.map (Seq.mapi (fun i x -> i, x)) l
+  |> Seq.concat
+  |> Seq.groupBy fst
+  |> Seq.map (fun (i, s) -> Seq.map snd s)
