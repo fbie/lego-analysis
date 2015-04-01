@@ -6,4 +6,4 @@ mkdir -p $BIN
 cp $FSD $BIN
 
 cd $ANALYZE
-fsharpc -O --tailcalls+ -r $FSD Extensions.fs Time.fs Gaze.fs Waves.fs Stats.fs Session.fs Chart.fs Main.fs -o $BIN/Analyze.exe
+fsharpc -O --tailcalls+ -r $FSD Extensions.fs Time.fs Gaze.fs Step.fs Main.fs -o $BIN/Analyze.exe

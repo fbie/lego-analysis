@@ -69,10 +69,10 @@ module Raw =
       { x = v1.x + v2.x; y = v1.y + v2.y }
     static member (-) (v1, v2) =
       { x = v1.x - v2.x; y = v1.y - v2.y }
-    static member (*) (v, k)
-      = { x = v.x * k; y = v.y * k }
-    static member (/) (v, k)
-      = { x = v.x / k; y = v.y / k }
+//    static member (*) (v, k)
+//      = { x = v.x * k; y = v.y * k }
+//    static member (/) (v, k)
+//      = { x = v.x / k; y = v.y / k }
 
   type Eye =
     { rawPos: Vec2D; avgPos: Vec2D; pupilSize: float; pupilCenter: Vec2D }

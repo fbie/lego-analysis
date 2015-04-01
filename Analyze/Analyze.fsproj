@@ -37,6 +37,7 @@
     <Compile Include="Gaze.fs" />
     <Compile Include="Waves.fs" />
     <Compile Include="Stats.fs" />
+    <Compile Include="Step.fs" />
     <Compile Include="Session.fs" />
     <Compile Include="Chart.fs" />
     <Compile Include="Main.fs" />

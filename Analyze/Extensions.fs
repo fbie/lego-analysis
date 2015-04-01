@@ -34,3 +34,9 @@ module Seq =
       b
     else
       seq { yield Seq.head a; yield! (catzip b (Seq.skip 1 a)) }
+
+  let rHead a =
+    seq { yield Seq.head a; yield! a }
+
+  let rLast a =
+    seq { yield! a; yield Seq.last a }
