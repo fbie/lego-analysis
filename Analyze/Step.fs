@@ -95,13 +95,18 @@ let private mkStep s a =
   else
     State.last { idx = sIdx s + 1; events = a }
 
+(* Much faster than the recursive, pure version. *)
+let rec mark f l =
+  let i = ref 0
+  seq { for e in l do
+          yield !i, e
+          if f e then
+            i := !i + 1
+            yield !i, e }
+
 (* Make steps from a timeline of events. *)
 let mkSteps a =
-  Seq.scan (fun (s, _) x ->
-            if isStep (snd x) then
-              (s + 1, x)
-            else
-              (s, x)) (0, a |> Seq.head) a
+  mark (snd >> isStep) a
   |> Seq.groupBy fst
   |> Seq.map (fun (_, s) -> s |> Seq.map snd)
   |> Seq.scan mkStep State.empty
@@ -164,10 +169,7 @@ let mkCsv a =
 (* Sort all steps so that every step is immediately followed
    by the sum of its regressions, if any. *)
 let reduce (a: Csl seq seq) =
-  Seq.map (fun x -> seq { yield Seq.head x
-                          let t = Seq.skip 1 x
-                          if not (Seq.isEmpty t) then
-                            yield Seq.sum t }) a
+  Seq.map (fun x -> seq { yield Seq.head x; yield Seq.sum (Seq.skip 1 x) }) a
   |> Seq.concat
 
 let catl l =
