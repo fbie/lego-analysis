@@ -42,7 +42,7 @@ if __name__ == '__main__':
     plt.bar(left=x_vals,
             height=y_vals,
             width=w_vals,
-            linewidth=0.0,
+            linewidth=0.8,
             color=cl)
     plt.xlabel('Time (s)')
     plt.xlim((0.0, x_vals[-1]))
