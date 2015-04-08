@@ -40,3 +40,6 @@ module Seq =
 
   let rLast a =
     seq { yield! a; yield Seq.last a }
+
+  let show f x =
+    eprintfn "%A" (f x); x
