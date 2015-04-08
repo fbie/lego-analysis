@@ -56,34 +56,35 @@ let attention s =
   |> Seq.sumBy (fun (a, b) -> if snd b then fst b - fst a + 0.8<s> else 0.0<s>)
   |> (-) (duration s)
 
-let private isStep =
+let private isProg =
   function
-    | Next _ | Previous _ -> true
+    | Next _ -> true
     | _ -> false
 
 let private isReg =
   function
-    | Previous _ -> true
+    | Previous (s, _) when s <> 0 -> true
     | _ -> false
 
-let private idxFromStep x s =
+let private isStep x =
+  isReg x || isProg x
+
+let private idxFromStep s =
   match s with
     | Next (s, ss) | Previous (s, ss) -> if ss = 0 then float s else float s - 1.0 + (float ss / 10.0)
-    | _ -> x
+    | _ -> 0.0
 
 (* Make a step from a state and some events. *)
 let private mkStep a =
   let h = Seq.head a |> snd
-  let i = idxFromStep 0.0 h
-  if not (isStep h) then
-    None
-  else if isReg h then
+  if isStep h then
+    let i = idxFromStep h
     Some { idx = i; events = a }
   else
-    Some { idx = i; events = a }
+    None
 
 (* Much faster than the recursive, pure version. *)
-let rec mark f l =
+let private mark f l =
   let i = ref 0
   seq { for e in l do
           yield !i, e
