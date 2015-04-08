@@ -115,32 +115,44 @@ type Csl =
   static member header = "index;duration;attention;zoom;rotate"
 
   (* Simply add two lines. *)
-  static member add a b = { idx = b.idx;
-                            duration = a.duration + b.duration;
-                            attention = a.attention + b.attention;
-                            zoom = a.zoom + b.zoom;
-                            rotate = a.rotate + b.rotate }
+  static member add a b =
+    let mkIdx a b =
+      match a.idx, b.idx with
+        | 0.0, 0.0 -> 0.0
+        | x, 0.0 -> x
+        | 0.0, x -> x
+        | x, y when x = y -> x
+        | _ -> failwith (sprintf "Not allowed to add two steps of different indices: %f and %f!" a.idx b.idx)
+    { idx = mkIdx a b;
+      duration = a.duration + b.duration;
+      attention = a.attention + b.attention;
+      zoom = a.zoom + b.zoom;
+      rotate = a.rotate + b.rotate }
 
-  static member (+) (a, b) = Csl.add a b
+  static member (+) (a, b) =
+    Csl.add a b
 
   (* Divie a line by some integer. *)
-  static member (/) (a, i) = { idx = a.idx;
-                               duration = a.duration / float i;
-                               attention = a.attention / float i;
-                               zoom = a.zoom / float i;
-                               rotate = a.rotate / float i }
+  static member (/) (a, i) =
+    { idx = a.idx;
+      duration = a.duration / float i;
+      attention = a.attention / float i;
+      zoom = a.zoom / float i;
+      rotate = a.rotate / float i }
 
   static member DivideByInt (a: Csl) i =
     if i = 0 then a else a / i
 
   (* The empty line. *)
-  static member empty = { idx = 0.0;
-                          duration = 0.0<s>;
-                          attention = 0.0<s>;
-                          zoom = 0.0<s>;
-                          rotate = 0.0<s> }
+  static member empty =
+    { idx = 0.0;
+      duration = 0.0<s>;
+      attention = 0.0<s>;
+      zoom = 0.0<s>;
+      rotate = 0.0<s> }
 
-  static member get_Zero () = Csl.empty
+  static member get_Zero () =
+    Csl.empty
 
 let mkCsl a =
   { idx = (idx a);
