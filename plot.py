@@ -17,7 +17,7 @@ def parse():
                 continue
 
 def colors(n):
-    cm = plt.get_cmap('gist_rainbow')
+    cm = plt.get_cmap('rainbow')
     for i in xrange(n):
         yield cm(1.0 * float(i) / float(n))
 
