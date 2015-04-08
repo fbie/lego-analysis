@@ -118,7 +118,6 @@ type Csl =
   static member add a b =
     let mkIdx a b =
       match a.idx, b.idx with
-        | 0.0, 0.0 -> 0.0
         | x, 0.0 -> x
         | 0.0, x -> x
         | x, y when x = y -> x
