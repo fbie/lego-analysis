@@ -4,10 +4,6 @@ import string
 import sys
 import matplotlib.pyplot as plt
 
-COLORS = ('b', 'g', 'r', 'c', 'm', 'y', 'k')
-LINES = ('-', '--', '-.', ':')
-MARKERS = ('.', ',', 'o', 'v', '^', '<', '>', 's', '*', '+')
-
 def parse():
     for l in sys.stdin:
         if not (l in string.whitespace or l.startswith('#')):
