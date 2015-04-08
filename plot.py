@@ -19,7 +19,7 @@ def parse():
 def colors(n):
     cm = plt.get_cmap('gist_rainbow')
     for i in xrange(n):
-        yield cm(1.0 * i / n)
+        yield cm(1.0 * float(i) / float(n))
 
 def mkColorMap(n):
     c = colors(n)
