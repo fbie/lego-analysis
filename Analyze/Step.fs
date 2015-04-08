@@ -183,8 +183,4 @@ let transpose l =
   |> Seq.map (fun (i, s) -> Seq.map snd s)
 
 let average (csv: Csl seq) =
-  let l = Seq.length csv
-  if l <= 0 then
-    Csl.empty
-  else
-    (Seq.sum csv) / l
+  Seq.sum csv / Seq.length csv
