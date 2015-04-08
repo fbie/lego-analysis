@@ -9,7 +9,7 @@ open Extensions
 
 (* A single step and all the events occured while it lasted. *)
 type Step =
-  { idx: int; events: (float<s> * Action) seq }
+  { idx: float; events: (float<s> * Action) seq }
 
 let idx s =
   s.idx
@@ -56,26 +56,6 @@ let attention s =
   |> Seq.sumBy (fun (a, b) -> if snd b then fst b - fst a + 0.8<s> else 0.0<s>)
   |> (-) (duration s)
 
-(* Small monad for building steps from event timeline. *)
-module private State =
-  type State<'a> =
-    | Empty
-    | Last of 'a
-
-  let empty =
-    Empty
-
-  let last v =
-    Last v
-
-  let force f x m =
-    match m with
-      | Empty -> x
-      | Last s -> f s
-
-let private sIdx m =
-  State.force idx 0 m
-
 let private isStep =
   function
     | Next _ | Previous _ -> true
@@ -86,14 +66,21 @@ let private isReg =
     | Previous _ -> true
     | _ -> false
 
+let private idxFromStep x s =
+  match s with
+    | Next (s, ss) | Previous (s, ss) -> if ss = 0 then float s else float s - 1.0 + (float ss / 10.0)
+    | _ -> x
+
 (* Make a step from a state and some events. *)
-let private mkStep s a =
-  if not ((snd >> isStep) (Seq.head a)) then
-    State.Empty
-  else if ((snd >> isReg) (Seq.head a)) then
-    State.last { idx = sIdx s - 1; events = a }
+let private mkStep a =
+  let h = Seq.head a |> snd
+  let i = idxFromStep 0.0 h
+  if not (isStep h) then
+    None
+  else if isReg h then
+    Some { idx = i; events = a }
   else
-    State.last { idx = sIdx s + 1; events = a }
+    Some { idx = i; events = a }
 
 (* Much faster than the recursive, pure version. *)
 let rec mark f l =
@@ -109,8 +96,7 @@ let mkSteps a =
   mark (snd >> isStep) a
   |> Seq.groupBy fst
   |> Seq.map (fun (_, s) -> s |> Seq.map snd)
-  |> Seq.scan mkStep State.empty
-  |> Seq.choose (fun x -> match x with | State.Last s -> Some s | _ -> None)
+  |> Seq.choose mkStep
 
 (* Group steps by index and remove group key. *)
 let group a =
@@ -119,7 +105,7 @@ let group a =
 
 (* Comma separated line. *)
 type Csl =
-  { idx: int;
+  { idx: float;
     duration: float<s>;
     attention: float<s>;
     zoom: float<s>;
@@ -148,7 +134,7 @@ type Csl =
     if i = 0 then a else a / i
 
   (* The empty line. *)
-  static member empty = { idx = 0;
+  static member empty = { idx = 0.0;
                           duration = 0.0<s>;
                           attention = 0.0<s>;
                           zoom = 0.0<s>;
@@ -173,7 +159,7 @@ let reduce (a: Csl seq seq) =
   |> Seq.concat
 
 let catl l =
-  sprintf "%i;%f;%f;%f;%f" l.idx (float l.duration) (float l.attention) (float l.zoom) (float l.rotate)
+  sprintf "%f;%f;%f;%f;%f" l.idx (float l.duration) (float l.attention) (float l.zoom) (float l.rotate)
 
 let cat l =
   Seq.map catl l
