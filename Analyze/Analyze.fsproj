@@ -35,11 +35,8 @@
     <Compile Include="Extensions.fs" />
     <Compile Include="Time.fs" />
     <Compile Include="Gaze.fs" />
-    <Compile Include="Waves.fs" />
     <Compile Include="Stats.fs" />
     <Compile Include="Step.fs" />
-    <Compile Include="Session.fs" />
-    <Compile Include="Chart.fs" />
     <Compile Include="Main.fs" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.1\Framework\v4.0\Microsoft.FSharp.Targets" />
