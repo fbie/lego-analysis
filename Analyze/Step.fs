@@ -63,7 +63,7 @@ let private isProg =
 
 let private isReg =
   function
-    | Previous (s, _) when s <> 0 -> true
+    | Previous (s, _) -> true
     | _ -> false
 
 let private isStep x =
@@ -71,17 +71,14 @@ let private isStep x =
 
 let private idxFromStep s =
   match s with
-    | Next (s, ss) | Previous (s, ss) -> if ss = 0 then float s else float s - 1.0 + (float ss / 10.0)
-    | _ -> 0.0
+    | Next (s, ss) | Previous (s, ss) -> if ss = 0 then float s + 1.0 else float s + (float ss / 10.0)
+    | _ -> 1.0
 
 (* Make a step from a state and some events. *)
 let private mkStep a =
   let h = Seq.head a |> snd
-  if isStep h then
-    let i = idxFromStep h
-    Some { idx = i; events = a }
-  else
-    None
+  let i = idxFromStep h
+  { idx = i; events = a }
 
 (* Much faster than the recursive, pure version. *)
 let private mark f l =
@@ -97,7 +94,7 @@ let mkSteps a =
   mark (snd >> isStep) a
   |> Seq.groupBy fst
   |> Seq.map (fun (_, s) -> s |> Seq.map snd)
-  |> Seq.choose mkStep
+  |> Seq.map mkStep
 
 (* Group steps by index and remove group key. *)
 let group a =
