@@ -32,7 +32,7 @@ def undiff(s, x):
         s += t
     return x
 
-if __name__ == '__main__':
+def plot(store_path=None):
     vals = list(parse())
     cm = mkColorMap(27)
     cl = map(lambda x: cm[x[0]], vals)
@@ -47,4 +47,10 @@ if __name__ == '__main__':
     plt.xlabel('Time (s)')
     plt.xlim((0.0, x_vals[-1]))
     plt.ylabel('Attention (s) / Duration (s)')
-    plt.show()
+    if not store_path:
+        plt.show()
+    else:
+      pass
+
+if __name__ == '__main__':
+    plot()
