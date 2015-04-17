@@ -56,6 +56,30 @@ let attention s =
   |> Seq.sumBy (fun (a, b) -> if snd b then fst b - fst a + 0.8<s> else 0.0<s>)
   |> (-) (duration s)
 
+(* Compute the number of times the user zoomed. *)
+let nZoom s =
+  events s
+  |> Seq.map(function
+             | Zoom _ -> 1.0
+             | _ -> 0.0)
+  |> Seq.sum
+
+(* Compute the number of times the user rotated. *)
+let nRotate s =
+  events s
+  |> Seq.map(function
+             | Rotation _ -> 1.0
+             | _ -> 0.0)
+  |> Seq.sum
+
+(* Compute the number of times the user looked at the screen. *)
+let nAttention s =
+  Seq.map (fun x ->
+           match snd x with
+           | Tracking true -> 1.0
+           | _ -> 0.0) s.events
+  |> Seq.sum
+
 let private isProg =
   function
     | Next _ -> true
@@ -170,9 +194,9 @@ let mkCsl a =
     attention = (attention a);
     zoom = (zoom a);
     rotate = (rotate a);
-    nAttention = 0.0;
-    nZoom = 0.0;
-    nRotate = 0.0 }
+    nAttention = (nAttention a);
+    nZoom = (nZoom a);
+    nRotate = (nRotate a) }
 
 let mkCsv a =
   Seq.map mkCsl a
