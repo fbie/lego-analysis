@@ -107,10 +107,13 @@ type Csl =
     duration: float<s>;
     attention: float<s>;
     zoom: float<s>;
-    rotate: float<s> }
+    rotate: float<s>;
+    nAttention: float;
+    nZoom: float;
+    nRotate: float}
 
   (* For decorating the CSV file. *)
-  static member header = "index;duration;attention;zoom;rotate"
+  static member header = "index;duration;attention;zoom;rotate;nAttention;nZoom;nRotate"
 
   (* Simply add two lines. *)
   static member add a b =
@@ -124,18 +127,25 @@ type Csl =
       duration = a.duration + b.duration;
       attention = a.attention + b.attention;
       zoom = a.zoom + b.zoom;
-      rotate = a.rotate + b.rotate }
+      rotate = a.rotate + b.rotate;
+      nAttention = a.nAttention + b.nAttention;
+      nZoom = a.nZoom + b.nZoom;
+      nRotate = a.nRotate + b.nRotate }
 
   static member (+) (a, b) =
     Csl.add a b
 
   (* Divie a line by some integer. *)
   static member (/) (a, i) =
+    let fi = float i;
     { idx = a.idx;
-      duration = a.duration / float i;
-      attention = a.attention / float i;
-      zoom = a.zoom / float i;
-      rotate = a.rotate / float i }
+      duration = a.duration / fi;
+      attention = a.attention / fi;
+      zoom = a.zoom / fi;
+      rotate = a.rotate / fi;
+      nAttention = a.nAttention / fi;
+      nZoom = a.nZoom / fi;
+      nRotate = a.nRotate / fi }
 
   static member DivideByInt (a: Csl) i =
     if i = 0 then a else a / i
@@ -146,7 +156,10 @@ type Csl =
       duration = 0.0<s>;
       attention = 0.0<s>;
       zoom = 0.0<s>;
-      rotate = 0.0<s> }
+      rotate = 0.0<s>;
+      nAttention = 0.0;
+      nZoom = 0.0;
+      nRotate = 0.0 }
 
   static member get_Zero () =
     Csl.empty
@@ -156,7 +169,10 @@ let mkCsl a =
     duration = (duration a);
     attention = (attention a);
     zoom = (zoom a);
-    rotate = (rotate a) }
+    rotate = (rotate a);
+    nAttention = 0.0;
+    nZoom = 0.0;
+    nRotate = 0.0 }
 
 let mkCsv a =
   Seq.map mkCsl a
@@ -168,7 +184,7 @@ let reduce (a: Csl seq seq) =
   |> Seq.concat
 
 let catl l =
-  sprintf "%f;%f;%f;%f;%f" l.idx (float l.duration) (float l.attention) (float l.zoom) (float l.rotate)
+  sprintf "%f;%f;%f;%f;%f;%f;%f;%f" l.idx (float l.duration) (float l.attention) (float l.zoom) (float l.rotate) l.nAttention l.nZoom l.nRotate
 
 let cat l =
   Seq.map catl l
